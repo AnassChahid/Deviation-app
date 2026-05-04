@@ -1,0 +1,56 @@
+<!-- [ Header ] start -->
+<header class="navbar pcoded-header navbar-expand-lg navbar-light">
+    <div class="m-header">
+        <a class="mobile-menu" id="mobile-collapse1" href="javascript:"><span></span></a>
+        <a href="/" class="b-brand">
+            <span class="brand-lockup">
+                <img class="brand-logo brand-logo-light" src="{{ config.ASSETS_ROOT }}/images/apm-logo.png" alt="APM Terminals">
+                <img class="brand-logo brand-logo-dark" src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="APM Terminals">
+                <span class="b-title">Deviation Control</span>
+            </span>
+        </a>
+    </div>
+    <a class="mobile-menu" id="mobile-header" href="javascript:">
+        <i class="feather icon-more-horizontal"></i>
+    </a>
+    <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ml-auto">
+            <li>
+                <label>
+                    <i class="icon feather icon-sun" id="theme-indicator"></i>
+                    <input type="checkbox" id="theme-switch" class="d-none">
+                </label>
+            </li>
+            <li>
+                <div class="dropdown drp-user">
+                    <a href="javascript:" class="dropdown-toggle app-user-chip" data-toggle="dropdown">
+                        <span class="app-user-avatar">
+                            <i class="feather icon-user"></i>
+                        </span>
+                        <span class="app-user-meta">
+                            <strong>{{ current_user.first_name }} {{ current_user.last_name }}</strong>
+                            <small>{{ current_user.role }}</small>
+                        </span>
+                        <i class="feather icon-chevron-down app-user-chevron"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right profile-notification">
+                        <div class="pro-head">
+                            <span>{{ current_user.first_name }} {{ current_user.last_name }}</span>
+                            <a href="{{ url_for('authentication_blueprint.logout') }}" class="dud-logout" title="Logout">
+                                <i class="feather icon-log-out"></i>
+                            </a>
+                        </div>
+                        <ul class="pro-body">
+                            <li>
+                                <a href="{{ url_for('authentication_blueprint.logout') }}" class="dropdown-item">
+                                    <i class="feather icon-lock"></i> Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</header>
+<!-- [ Header ] end -->

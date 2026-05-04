@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Edit Vessel {{ vessel.id }} {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Reference data</span>
+                                    <h1>Edit vessel</h1>
+                                </div>
+                                <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.vessel_detail', vessel_id=vessel.id) }}">
+                                    <i class="feather icon-arrow-left"></i>
+                                    Back
+                                </a>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Vessel information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="name">Name</label>
+                                                    <input id="name" name="name" class="form-control" value="{{ vessel.name }}" required maxlength="120">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="codeVessel">Code</label>
+                                                    <input id="codeVessel" name="codeVessel" class="form-control" value="{{ vessel.codeVessel }}" required maxlength="80">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="feather icon-save"></i>Save</button>
+                                        <a class="btn btn-outline-secondary" href="{{ url_for('home_blueprint.vessel_detail', vessel_id=vessel.id) }}"><i class="feather icon-x"></i>Cancel</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

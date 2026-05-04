@@ -1,0 +1,128 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Update Deviation {{ deviation.id }} {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Update record</span>
+                                    <h1>Deviation {{ deviation.id }}</h1>
+                                </div>
+                                <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
+                                    <i class="feather icon-arrow-left"></i>
+                                    Back
+                                </a>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Deviation information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="date">Date</label>
+                                                    <input id="date" name="date" type="date" class="form-control" value="{{ deviation.date }}" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="shiftType">Shift</label>
+                                                    <select id="shiftType" name="shiftType" class="form-control" required>
+                                                        {% for shift in shift_options %}
+                                                            <option value="{{ shift }}" {% if deviation.shiftType == shift %}selected{% endif %}>{{ shift }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="area">Area</label>
+                                                    <select id="area" name="area" class="form-control" required>
+                                                        {% for area in area_options %}
+                                                            <option value="{{ area }}" {% if deviation.area == area %}selected{% endif %}>{{ area }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="status">Status</label>
+                                                    <select id="status" name="status" class="form-control" required>
+                                                        {% for status in status_options %}
+                                                            <option value="{{ status }}" {% if deviation.status == status %}selected{% endif %}>{{ status }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="deviation_type_id">Deviation Type</label>
+                                                    <select id="deviation_type_id" name="deviation_type_id" class="form-control" required data-searchable-select data-search-placeholder="Search deviation types">
+                                                        {% for option in deviation_type_options %}
+                                                            <option value="{{ option.id }}" {% if deviation.deviation_type_id == option.id %}selected{% endif %}>{{ option.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="qc_id">QC</label>
+                                                    <select id="qc_id" name="qc_id" class="form-control" required>
+                                                        {% for option in qc_options %}
+                                                            <option value="{{ option.id }}" {% if deviation.qc_id == option.id %}selected{% endif %}>{{ option.qcName }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="vessel_ids">Vessel</label>
+                                                    {% set selected_vessel_id = (deviation.vessel_ids|default([])|first) %}
+                                                    <select id="vessel_ids" name="vessel_ids" class="form-control" data-searchable-select data-search-placeholder="Search vessels">
+                                                        <option value="">Select vessel</option>
+                                                        {% for option in vessel_options %}
+                                                            <option value="{{ option.id }}" {% if option.id == selected_vessel_id %}selected{% endif %}>{{ option.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label for="description">Description</label>
+                                                    <textarea id="description" name="description" class="form-control" rows="4">{{ deviation.description|default('') }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="feather icon-save"></i>Save</button>
+                                        <a class="btn btn-outline-secondary" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}"><i class="feather icon-x"></i>Cancel</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/js/searchable-select.js"></script>
+{% endblock javascripts %}

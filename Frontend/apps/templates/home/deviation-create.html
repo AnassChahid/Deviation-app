@@ -1,0 +1,127 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Create Deviation {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">New record</span>
+                                    <h1>Create deviation</h1>
+                                </div>
+                                <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.deviations') }}">
+                                    <i class="feather icon-arrow-left"></i>
+                                    Back
+                                </a>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Deviation information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="date">Date</label>
+                                                    <input id="date" name="date" type="date" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="shiftType">Shift</label>
+                                                    <select id="shiftType" name="shiftType" class="form-control" required>
+                                                        {% for shift in shift_options %}
+                                                            <option value="{{ shift }}">{{ shift }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="area">Area</label>
+                                                    <select id="area" name="area" class="form-control" required>
+                                                        {% for area in area_options %}
+                                                            <option value="{{ area }}">{{ area }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="status">Status</label>
+                                                    <select id="status" name="status" class="form-control" required>
+                                                        {% for status in status_options %}
+                                                            <option value="{{ status }}" {% if status == 'Not Yet' %}selected{% endif %}>{{ status }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="deviation_type_id">Deviation Type</label>
+                                                    <select id="deviation_type_id" name="deviation_type_id" class="form-control" required data-searchable-select data-search-placeholder="Search deviation types">
+                                                        {% for option in deviation_type_options %}
+                                                            <option value="{{ option.id }}">{{ option.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="qc_id">QC</label>
+                                                    <select id="qc_id" name="qc_id" class="form-control" required>
+                                                        {% for option in qc_options %}
+                                                            <option value="{{ option.id }}">{{ option.qcName }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="vessel_ids">Vessel</label>
+                                                    <select id="vessel_ids" name="vessel_ids" class="form-control" data-searchable-select data-search-placeholder="Search vessels">
+                                                        <option value="">Select vessel</option>
+                                                        {% for option in vessel_options %}
+                                                            <option value="{{ option.id }}">{{ option.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label for="description">Description</label>
+                                                    <textarea id="description" name="description" class="form-control" rows="4"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="feather icon-check"></i>Create</button>
+                                        <a class="btn btn-outline-secondary" href="{{ url_for('home_blueprint.deviations') }}"><i class="feather icon-x"></i>Cancel</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/js/searchable-select.js"></script>
+{% endblock javascripts %}

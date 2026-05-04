@@ -1,0 +1,405 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Deviations {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Deviation log</span>
+                                    <h1>Deviations</h1>
+                                </div>
+                                <a class="btn btn-primary" href="{{ url_for('home_blueprint.deviation_create') }}">
+                                    <i class="feather icon-plus"></i>
+                                    New Deviation
+                                </a>
+                            </div>
+
+                            <div class="card app-table-card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>Browse records</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="app-filter-panel">
+                                        <div class="app-deviation-filter-grid">
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterSearch">Search</label>
+                                                <div class="app-search-control">
+                                                    <i class="feather icon-search"></i>
+                                                    <input id="filterSearch" type="search" class="form-control" placeholder="Search records">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterShift">Shift</label>
+                                                <select id="filterShift" class="form-control custom-select">
+                                                    <option value="">All shifts</option>
+                                                    {% for shift in shift_options %}
+                                                        <option value="{{ shift|lower }}">{{ shift }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterArea">Area</label>
+                                                <select id="filterArea" class="form-control custom-select">
+                                                    <option value="">All areas</option>
+                                                    {% for area in area_options %}
+                                                        <option value="{{ area|lower }}">{{ area }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterStatus">Status</label>
+                                                <select id="filterStatus" class="form-control custom-select">
+                                                    <option value="">All statuses</option>
+                                                    {% for status in status_options %}
+                                                        <option value="{{ status|lower }}">{{ status }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterQc">QC</label>
+                                                <select id="filterQc" class="form-control custom-select">
+                                                    <option value="">All QCs</option>
+                                                    {% for option in qc_options %}
+                                                        <option value="{{ option.id }}">{{ option.qcName }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterVessel">Vessel</label>
+                                                <select id="filterVessel" class="form-control custom-select">
+                                                    <option value="">All vessels</option>
+                                                    {% for option in vessel_options %}
+                                                        <option value="{{ option.id }}">{{ option.name }} - {{ option.codeVessel }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="form-group">
+                                                <label for="filterDeviationType">Deviation Type</label>
+                                                <select id="filterDeviationType" class="form-control custom-select">
+                                                    <option value="">All deviation types</option>
+                                                    {% for option in deviation_type_options %}
+                                                        <option value="{{ option.id }}">{{ option.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="app-table-shell">
+                                        <div class="app-table-title-row">
+                                            <div>
+                                                <span>Deviation records</span>
+                                                <small id="tableInfo" class="text-muted"></small>
+                                            </div>
+                                            <button id="exportCsv" type="button" class="btn btn-outline-primary btn-sm">
+                                                <i class="feather icon-download"></i>
+                                                Export my CSV
+                                            </button>
+                                        </div>
+                                        <div class="table-responsive">
+                                        <table class="table table-hover app-data-table" id="deviationsTable">
+                                            <thead>
+                                            <tr>
+                                                <!-- <th>ID</th> -->
+                                                <th>Date</th>
+                                                <th>Week</th>
+                                                <th>Shift</th>
+                                                <th>Area</th>
+                                                <th>Vessel Name</th>
+                                                <th>Vessel Code</th>
+                                                <th>Deviation Type</th>
+                                                <th>QC</th>
+                                                <th>Creator</th>
+                                                <th>Status</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for deviation in deviations %}
+                                            <tr data-search="{{ (deviation.area|default('Yard') ~ ' ' ~ deviation.status|default('') ~ ' ' ~ deviation.description|default('') ~ ' ' ~ deviation.ts ~ ' ' ~ deviation.shiftType ~ ' ' ~ deviation_type_map.get(deviation.deviation_type_id, deviation.deviation_type_id) ~ ' ' ~ qc_map.get(deviation.qc_id, deviation.qc_id) ~ ' ' ~ deviation.creator_name|default(''))|lower }}"
+                                                data-vessel-search="{% for vessel_id in deviation.vessel_ids|default([]) %}{{ vessel_search_map.get(vessel_id, vessel_id) }} {% endfor %}"
+                                                data-shift="{{ deviation.shiftType|lower }}"
+                                                data-area="{{ deviation.area|default('Yard')|lower }}"
+                                                data-status="{{ deviation.status|default('')|lower }}"
+                                                data-qc="{{ deviation.qc_id }}"
+                                                data-vessels="{{ deviation.vessel_ids|default([])|join(',') }}"
+                                                data-deviation-type="{{ deviation.deviation_type_id }}"
+                                                data-creator-id="{{ deviation.creator_id }}"
+                                                data-date="{{ deviation.date }}">
+                                                <!-- <td>{{ deviation.id }}</td> -->
+                                                <td>{{ deviation.date }}</td>
+                                                <td>{{ deviation.ts }}</td>
+                                                <td><span class="app-chip app-chip-muted">{{ deviation.shiftType }}</span></td>
+                                                <td><span class="app-chip app-chip-muted">{{ deviation.area|default('Yard') }}</span></td>
+                                                <td>
+                                                    {% for vessel_id in deviation.vessel_ids|default([]) %}
+                                                        <span class="app-chip app-chip-muted">{{ vessel_name_map.get(vessel_id, vessel_id) }}</span>
+                                                    {% else %}
+                                                        <span class="text-muted">None</span>
+                                                    {% endfor %}
+                                                </td>
+                                                <td>
+                                                    {% for vessel_id in deviation.vessel_ids|default([]) %}
+                                                        <span class="app-chip app-chip-muted">{{ vessel_code_map.get(vessel_id, vessel_id) }}</span>
+                                                    {% else %}
+                                                        <span class="text-muted">None</span>
+                                                    {% endfor %}
+                                                </td>
+                                                <td>{{ deviation_type_map.get(deviation.deviation_type_id, deviation.deviation_type_id) }}</td>
+                                                <td>{{ qc_map.get(deviation.qc_id, deviation.qc_id) }}</td>
+                                                <td>{{ deviation.creator_name|default('Unknown') }}</td>
+                                                <td>
+                                                    {% set status = deviation.status|default('') %}
+                                                    <span class="app-status {% if status == 'Done' %}app-status-done{% elif status == 'On going' %}app-status-progress{% else %}app-status-pending{% endif %}">
+                                                        {{ status }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}"><i class="feather icon-eye"></i></a>
+                                                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('home_blueprint.deviation_edit', deviation_id=deviation.id) }}"><i class="feather icon-edit-2"></i></a>
+                                                    <form class="d-inline" method="post" action="{{ url_for('home_blueprint.deviation_delete', deviation_id=deviation.id) }}" onsubmit="return confirm('Delete this deviation?');">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="feather icon-trash-2"></i></button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr data-empty="true">
+                                                <td colspan="12" class="text-center text-muted">No deviations found</td>
+                                            </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="app-table-footer app-table-footer-centered d-flex justify-content-between align-items-center">
+                                        <div id="tablePageInfo" class="text-muted"></div>
+                                        <div class="app-page-size-control app-page-size-control-centered">
+                                            <label for="pageSize">Rows</label>
+                                            <select id="pageSize" class="form-control custom-select">
+                                                <option value="10">10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <nav>
+                                            <ul class="pagination mb-0" id="tablePagination"></ul>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="exportModal" tabindex="-1" role="dialog" aria-labelledby="exportModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="exportModalLabel">Export my deviations</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="exportFrom">From</label>
+                                                        <input id="exportFrom" type="date" class="form-control">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="exportTo">To</label>
+                                                        <input id="exportTo" type="date" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Only your matching deviations inside this date range will be exported.</small>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                            <button id="confirmExportCsv" type="button" class="btn btn-primary"><i class="feather icon-download"></i>Export CSV</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    (function () {
+        const table = document.getElementById('deviationsTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr')).filter(row => !row.dataset.empty);
+        const filters = {
+            search: document.getElementById('filterSearch'),
+            shift: document.getElementById('filterShift'),
+            area: document.getElementById('filterArea'),
+            status: document.getElementById('filterStatus'),
+            qc: document.getElementById('filterQc'),
+            vessel: document.getElementById('filterVessel'),
+            deviationType: document.getElementById('filterDeviationType'),
+            pageSize: document.getElementById('pageSize')
+        };
+        const exportButton = document.getElementById('exportCsv');
+        const confirmExportButton = document.getElementById('confirmExportCsv');
+        const exportFrom = document.getElementById('exportFrom');
+        const exportTo = document.getElementById('exportTo');
+        const currentUserId = '{{ current_user.id }}';
+        const info = document.getElementById('tableInfo');
+        const pageInfo = document.getElementById('tablePageInfo');
+        const pagination = document.getElementById('tablePagination');
+        let currentPage = 1;
+
+        function matches(row) {
+            const search = filters.search.value.trim().toLowerCase();
+            const shift = filters.shift.value.trim().toLowerCase();
+            const area = filters.area.value.trim().toLowerCase();
+            const status = filters.status.value.trim().toLowerCase();
+            const qc = filters.qc.value;
+            const vessel = filters.vessel.value;
+            const deviationType = filters.deviationType.value;
+            const rowDate = row.dataset.date;
+            const rowVessels = row.dataset.vessels ? row.dataset.vessels.split(',') : [];
+
+            const searchable = `${row.dataset.search || ''} ${row.dataset.vesselSearch || ''}`.toLowerCase();
+
+            return (!search || searchable.includes(search)) &&
+                (!shift || row.dataset.shift === shift) &&
+                (!area || row.dataset.area === area) &&
+                (!status || row.dataset.status === status) &&
+                (!qc || row.dataset.qc === qc) &&
+                (!vessel || rowVessels.includes(vessel)) &&
+                (!deviationType || row.dataset.deviationType === deviationType);
+        }
+
+        function csvEscape(value) {
+            const text = String(value || '').replace(/\s+/g, ' ').trim();
+            return `"${text.replace(/"/g, '""')}"`;
+        }
+
+        function exportCsv() {
+            const from = exportFrom.value;
+            const to = exportTo.value;
+
+            if (!from || !to) {
+                alert('Select a From and To date before exporting.');
+                return;
+            }
+
+            const exportRows = rows
+                .filter(matches)
+                .filter(row => row.dataset.date >= from && row.dataset.date <= to)
+                .filter(row => row.dataset.creatorId === currentUserId);
+
+            if (!exportRows.length) {
+                alert('No matching personal deviations to export.');
+                return;
+            }
+
+            const headers = ['Date', 'TS', 'Shift', 'Area', 'Vessel Name', 'Vessel Code', 'Deviation Type', 'QC', 'Creator', 'Status'];
+            const lines = [headers.map(csvEscape).join(',')];
+            exportRows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll('td')).slice(0, headers.length);
+                lines.push(cells.map(cell => csvEscape(cell.textContent)).join(','));
+            });
+
+            const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `my-deviations-${from}-to-${to}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            URL.revokeObjectURL(link.href);
+            link.remove();
+            $('#exportModal').modal('hide');
+        }
+
+        function render() {
+            const visibleRows = rows.filter(matches);
+            const pageSize = Number(filters.pageSize.value);
+            const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+            currentPage = Math.min(currentPage, pageCount);
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+
+            rows.forEach(row => row.style.display = 'none');
+            visibleRows.slice(start, end).forEach(row => row.style.display = '');
+
+            const message = visibleRows.length
+                ? `Showing ${start + 1}-${Math.min(end, visibleRows.length)} of ${visibleRows.length} entries`
+                : 'No matching deviations';
+            info.textContent = message;
+            pageInfo.textContent = message;
+
+            pagination.innerHTML = '';
+            for (let page = 1; page <= pageCount; page += 1) {
+                const item = document.createElement('li');
+                item.className = `page-item ${page === currentPage ? 'active' : ''}`;
+                const link = document.createElement('button');
+                link.type = 'button';
+                link.className = 'page-link';
+                link.textContent = page;
+                link.addEventListener('click', function () {
+                    currentPage = page;
+                    render();
+                });
+                item.appendChild(link);
+                pagination.appendChild(item);
+            }
+        }
+
+        Object.values(filters).forEach(input => {
+            input.addEventListener('input', function () {
+                currentPage = 1;
+                render();
+            });
+            input.addEventListener('change', function () {
+                currentPage = 1;
+                render();
+            });
+        });
+
+        exportButton.addEventListener('click', function () {
+            $('#exportModal').modal('show');
+        });
+        confirmExportButton.addEventListener('click', exportCsv);
+
+        render();
+    })();
+</script>
+{% endblock javascripts %}

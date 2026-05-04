@@ -1,0 +1,61 @@
+<!-- [ navigation menu ] start -->
+<nav class="pcoded-navbar">
+    <div class="navbar-wrapper">
+        <div class="navbar-brand header-logo">
+            <a href="/" class="b-brand">
+                <span class="brand-lockup">
+                    <img class="brand-logo brand-logo-light" src="{{ config.ASSETS_ROOT }}/images/apm-logo.png" alt="APM Terminals">
+                    <img class="brand-logo brand-logo-dark" src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="APM Terminals">
+                    <span class="b-title">Deviation Control</span>
+                </span>
+            </a>
+            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
+        </div>
+        <div class="navbar-content scroll-div">
+            <ul class="nav pcoded-inner-navbar">
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Navigation</label>
+                </li>
+                <li class="nav-item {% if 'index' in segment %} active {% endif %}">
+                    <a href="/" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-home"></i></span>
+                        <span class="pcoded-mtext">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item {% if 'deviations' in segment %} active {% endif %}">
+                    <a href="{{ url_for('home_blueprint.deviations') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-file-text"></i></span>
+                        <span class="pcoded-mtext">Deviations</span>
+                    </a>
+                </li>
+                {% if current_user.role in ['admin', 'superuser'] %}
+                <li class="nav-item {% if 'deviation-types' in segment %} active {% endif %}">
+                    <a href="{{ url_for('home_blueprint.deviation_types') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-tag"></i></span>
+                        <span class="pcoded-mtext">Deviation Types</span>
+                    </a>
+                </li>
+                <li class="nav-item {% if 'vessels' in segment %} active {% endif %}">
+                    <a href="{{ url_for('home_blueprint.vessels') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-anchor"></i></span>
+                        <span class="pcoded-mtext">Vessels</span>
+                    </a>
+                </li>
+                <li class="nav-item {% if 'users' in segment %} active {% endif %}">
+                    <a href="{{ url_for('home_blueprint.users') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+                        <span class="pcoded-mtext">Manage Users</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item app-sidebar-logout">
+                    <a href="{{ url_for('authentication_blueprint.logout') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-power"></i></span>
+                        <span class="pcoded-mtext">Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<!-- [ navigation menu ] end -->

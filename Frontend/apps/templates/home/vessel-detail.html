@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Vessel {{ vessel.id }} {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Vessel detail</span>
+                                    <h1>{{ vessel.name }}</h1>
+                                </div>
+                                <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.vessels') }}">
+                                    <i class="feather icon-arrow-left"></i>
+                                    Back
+                                </a>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="row">
+                                        <dt class="col-sm-3">ID</dt>
+                                        <dd class="col-sm-9">{{ vessel.id }}</dd>
+                                        <dt class="col-sm-3">Name</dt>
+                                        <dd class="col-sm-9">{{ vessel.name }}</dd>
+                                        <dt class="col-sm-3">Code</dt>
+                                        <dd class="col-sm-9">{{ vessel.codeVessel }}</dd>
+                                    </dl>
+                                    {% if current_user.role in ['admin', 'superuser'] %}
+                                    <a class="btn btn-primary" href="{{ url_for('home_blueprint.vessel_edit', vessel_id=vessel.id) }}"><i class="feather icon-edit-2"></i>Edit</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

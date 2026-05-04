@@ -1,0 +1,188 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Deviation Types {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Configuration</span>
+                                    <h1>Deviation types</h1>
+                                </div>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createDeviationTypeModal">
+                                    <i class="feather icon-plus"></i>
+                                    New Type
+                                </button>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>Managed types</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Status</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for deviation_type in deviation_types %}
+                                            <tr>
+                                                <td>{{ deviation_type.id }}</td>
+                                                <td>{{ deviation_type.name }}</td>
+                                                <td>
+                                                    {% if deviation_type.active %}
+                                                        <span class="badge badge-success">Active</span>
+                                                    {% else %}
+                                                        <span class="badge badge-secondary">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-right">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#readDeviationType{{ deviation_type.id }}"><i class="feather icon-eye"></i>Read</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#editDeviationType{{ deviation_type.id }}"><i class="feather icon-edit-2"></i>Update</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteDeviationType{{ deviation_type.id }}"><i class="feather icon-trash-2"></i>Delete</button>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">No deviation types found</td>
+                                            </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="createDeviationTypeModal" tabindex="-1" role="dialog" aria-labelledby="createDeviationTypeLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.deviation_type_create') }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="createDeviationTypeLabel">Create Deviation Type</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="createName">Name</label>
+                                                    <textarea id="createName" name="name" class="form-control" rows="3" required maxlength="120"></textarea>
+                                                </div>
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input" id="createActive" name="active" checked>
+                                                    <label class="custom-control-label" for="createActive">Active</label>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-primary"><i class="feather icon-check"></i>Create</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% for deviation_type in deviation_types %}
+                            <div class="modal fade" id="readDeviationType{{ deviation_type.id }}" tabindex="-1" role="dialog" aria-labelledby="readDeviationTypeLabel{{ deviation_type.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="readDeviationTypeLabel{{ deviation_type.id }}">Deviation Type</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <dl class="row mb-0">
+                                                <dt class="col-sm-4">ID</dt>
+                                                <dd class="col-sm-8">{{ deviation_type.id }}</dd>
+                                                <dt class="col-sm-4">Name</dt>
+                                                <dd class="col-sm-8">{{ deviation_type.name }}</dd>
+                                                <dt class="col-sm-4">Status</dt>
+                                                <dd class="col-sm-8">{% if deviation_type.active %}Active{% else %}Inactive{% endif %}</dd>
+                                            </dl>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="editDeviationType{{ deviation_type.id }}" tabindex="-1" role="dialog" aria-labelledby="editDeviationTypeLabel{{ deviation_type.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.deviation_type_edit', deviation_type_id=deviation_type.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editDeviationTypeLabel{{ deviation_type.id }}">Update Deviation Type</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="editName{{ deviation_type.id }}">Name</label>
+                                                    <textarea id="editName{{ deviation_type.id }}" name="name" class="form-control" rows="3" required maxlength="120">{{ deviation_type.name }}</textarea>
+                                                </div>
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input" id="editActive{{ deviation_type.id }}" name="active" {% if deviation_type.active %}checked{% endif %}>
+                                                    <label class="custom-control-label" for="editActive{{ deviation_type.id }}">Active</label>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-primary"><i class="feather icon-save"></i>Save</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="deleteDeviationType{{ deviation_type.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteDeviationTypeLabel{{ deviation_type.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.deviation_type_delete', deviation_type_id=deviation_type.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteDeviationTypeLabel{{ deviation_type.id }}">Delete Deviation Type</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="mb-0">Delete {{ deviation_type.name }}?</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-danger"><i class="feather icon-trash-2"></i>Delete</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

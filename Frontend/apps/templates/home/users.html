@@ -1,0 +1,303 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Manage Users {% endblock %}
+
+{% block content %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endwith %}
+
+                            <div class="app-page-heading">
+                                <div>
+                                    <span class="app-kicker">Administration</span>
+                                    <h1>Manage users</h1>
+                                </div>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createUserModal">
+                                    <i class="feather icon-user-plus"></i>
+                                    Add User
+                                </button>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>User directory</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Shift</th>
+                                                <th>Role</th>
+                                                <th>Status</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for user in users %}
+                                            <tr>
+                                                <td>{{ user.id }}</td>
+                                                <td>{{ user.firstName }} {{ user.lastName }}</td>
+                                                <td>{{ user.email }}</td>
+                                                <td>
+                                                    {% if user.shift %}
+                                                        <span class="app-chip app-chip-muted">{{ user.shift }}</span>
+                                                    {% else %}
+                                                        <span class="text-muted">Not assigned</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td><span class="badge badge-primary">{{ user.role }}</span></td>
+                                                <td>
+                                                    {% if user.active %}
+                                                        <span class="badge badge-success">Active</span>
+                                                    {% else %}
+                                                        <span class="badge badge-secondary">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-right">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#readUser{{ user.id }}"><i class="feather icon-eye"></i>Details</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#editUser{{ user.id }}"><i class="feather icon-edit-2"></i>Edit</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteUser{{ user.id }}"><i class="feather icon-trash-2"></i>Delete</button>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">No users found</td>
+                                            </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="createUserModal" tabindex="-1" role="dialog" aria-labelledby="createUserLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.user_create') }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="createUserLabel">Add User</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="createFirstName">First name</label>
+                                                    <input id="createFirstName" name="firstName" class="form-control" required maxlength="100">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="createLastName">Last name</label>
+                                                    <input id="createLastName" name="lastName" class="form-control" required maxlength="100">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="createEmail">Email</label>
+                                                    <input id="createEmail" name="email" type="email" class="form-control" required maxlength="255">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="createPassword">Password</label>
+                                                    <input id="createPassword" name="password" type="password" class="form-control" required minlength="6" maxlength="128">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="createShift">Shift</label>
+                                                    <select id="createShift" name="shift" class="form-control">
+                                                        <option value="">Not assigned</option>
+                                                        {% for shift in shift_options %}
+                                                            <option value="{{ shift }}">{{ shift }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="createRole">Role</label>
+                                                    <select id="createRole" name="role" class="form-control" required>
+                                                        {% for role in role_options %}
+                                                            {% if current_user.role == 'superuser' or role == 'user' %}
+                                                                <option value="{{ role }}">{{ role }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="custom-control custom-switch">
+                                                    <input type="checkbox" class="custom-control-input" id="createActive" name="active" checked>
+                                                    <label class="custom-control-label" for="createActive">Active user</label>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-primary"><i class="feather icon-check"></i>Create</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% for user in users %}
+                            <div class="modal fade" id="readUser{{ user.id }}" tabindex="-1" role="dialog" aria-labelledby="readUserLabel{{ user.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="readUserLabel{{ user.id }}">User Details</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="app-user-detail">
+                                                <div class="app-user-detail-head">
+                                                    <div class="app-user-detail-avatar">
+                                                        {{ user.firstName[:1] }}{{ user.lastName[:1] }}
+                                                    </div>
+                                                    <div class="app-user-detail-title">
+                                                        <span class="app-kicker">User profile</span>
+                                                        <h4>{{ user.firstName }} {{ user.lastName }}</h4>
+                                                        <p>{{ user.email }}</p>
+                                                    </div>
+                                                    <span class="app-user-role app-user-role-{{ user.role }}">{{ user.role }}</span>
+                                                </div>
+
+                                                <div class="app-user-detail-grid">
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-hash"></i>
+                                                        <span>ID</span>
+                                                        <strong>{{ user.id }}</strong>
+                                                    </div>
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-mail"></i>
+                                                        <span>Email</span>
+                                                        <strong>{{ user.email }}</strong>
+                                                    </div>
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-shield"></i>
+                                                        <span>Role</span>
+                                                        <strong>{{ user.role }}</strong>
+                                                    </div>
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-clock"></i>
+                                                        <span>Shift</span>
+                                                        <strong>{{ user.shift|default('Not assigned', true) }}</strong>
+                                                    </div>
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-user-check"></i>
+                                                        <span>Status</span>
+                                                        <strong>{% if user.active %}Active{% else %}Inactive{% endif %}</strong>
+                                                    </div>
+                                                    <div class="app-user-detail-item">
+                                                        <i class="feather icon-unlock"></i>
+                                                        <span>Access</span>
+                                                        <strong>{% if user.role in ['admin', 'superuser'] %}Administration{% else %}Standard user{% endif %}</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="editUser{{ user.id }}" tabindex="-1" role="dialog" aria-labelledby="editUserLabel{{ user.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.user_edit', user_id=user.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editUserLabel{{ user.id }}">Edit User</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="editFirstName{{ user.id }}">First name</label>
+                                                    <input id="editFirstName{{ user.id }}" name="firstName" class="form-control" value="{{ user.firstName }}" required maxlength="100">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="editLastName{{ user.id }}">Last name</label>
+                                                    <input id="editLastName{{ user.id }}" name="lastName" class="form-control" value="{{ user.lastName }}" required maxlength="100">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="editEmail{{ user.id }}">Email</label>
+                                                    <input id="editEmail{{ user.id }}" name="email" type="email" class="form-control" value="{{ user.email }}" required maxlength="255">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="editPassword{{ user.id }}">New password</label>
+                                                    <input id="editPassword{{ user.id }}" name="password" type="password" class="form-control" minlength="6" maxlength="128" placeholder="Leave empty to keep current password">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="editShift{{ user.id }}">Shift</label>
+                                                    <select id="editShift{{ user.id }}" name="shift" class="form-control">
+                                                        <option value="" {% if not user.shift %}selected{% endif %}>Not assigned</option>
+                                                        {% for shift in shift_options %}
+                                                            <option value="{{ shift }}" {% if user.shift == shift %}selected{% endif %}>{{ shift }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="editRole{{ user.id }}">Role</label>
+                                                    <select id="editRole{{ user.id }}" name="role" class="form-control" required>
+                                                        {% for role in role_options %}
+                                                            {% if current_user.role == 'superuser' or role == 'user' %}
+                                                                <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="custom-control custom-switch">
+                                                    <input type="checkbox" class="custom-control-input" id="editActive{{ user.id }}" name="active" {% if user.active %}checked{% endif %} {% if user.id|string == current_user.id|string %}disabled{% endif %}>
+                                                    <label class="custom-control-label" for="editActive{{ user.id }}">Active user</label>
+                                                    {% if user.id|string == current_user.id|string %}
+                                                        <small class="form-text text-muted">You cannot deactivate your own account.</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-primary"><i class="feather icon-save"></i>Save</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="deleteUser{{ user.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteUserLabel{{ user.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content">
+                                        <form method="post" action="{{ url_for('home_blueprint.user_delete', user_id=user.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteUserLabel{{ user.id }}">Delete User</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="mb-0">Delete {{ user.firstName }} {{ user.lastName }}?</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                                                <button type="submit" class="btn btn-danger"><i class="feather icon-trash-2"></i>Delete</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

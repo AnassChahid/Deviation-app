@@ -1,0 +1,231 @@
+﻿{% extends "layouts/base.html" %}
+
+{% block title %} Index {% endblock %}
+
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+{% macro bar_chart(title, rows, icon) %}
+    <div class="card app-panel app-chart-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="feather {{ icon }}"></i>{{ title }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="app-chart-list">
+                {% for row in rows %}
+                    <div class="app-chart-row">
+                        <div class="app-chart-row-head">
+                            <span>{{ row.label }}</span>
+                            <strong>{{ row.count }}</strong>
+                        </div>
+                        <div class="app-chart-track">
+                            <span style="width: {{ row.percent }}%"></span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="app-empty app-empty-compact">
+                        <i class="feather icon-bar-chart-2"></i>
+                        <span>No data yet</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper app-dashboard">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+
+                            <section class="app-hero">
+                                <div class="app-hero-copy">
+                                    <span class="app-kicker">APM Terminals operations</span>
+                                    <h1>Deviation control center</h1>
+                                    <p>Monitor terminal quality events, shift follow-up, and operational exceptions from one focused workspace.</p>
+                                </div>
+                                <div class="app-hero-actions">
+                                    <a class="btn btn-primary" href="{{ url_for('home_blueprint.deviation_create') }}">
+                                        <i class="feather icon-plus"></i>
+                                        New Deviation
+                                    </a>
+                                    <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.deviations') }}">
+                                        <i class="feather icon-list"></i>
+                                        View List
+                                    </a>
+                                </div>
+                                <div class="app-hero-brand" aria-hidden="true">
+                                    <img src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="">
+                                </div>
+                            </section>
+
+                            <div class="row app-stat-row">
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat">
+                                        <span class="app-stat-icon"><i class="feather icon-file-text"></i></span>
+                                        <span class="app-stat-label">Total deviations</span>
+                                        <strong>{{ stats.total }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat app-stat-warning">
+                                        <span class="app-stat-icon"><i class="feather icon-folder"></i></span>
+                                        <span class="app-stat-label">Open</span>
+                                        <strong>{{ stats.open }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat app-stat-danger">
+                                        <span class="app-stat-icon"><i class="feather icon-alert-triangle"></i></span>
+                                        <span class="app-stat-label">Overdue</span>
+                                        <strong>{{ stats.overdue }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat app-stat-success">
+                                        <span class="app-stat-icon"><i class="feather icon-check"></i></span>
+                                        <span class="app-stat-label">Done</span>
+                                        <strong>{{ stats.done }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat app-stat-warning">
+                                        <span class="app-stat-icon"><i class="feather icon-clock"></i></span>
+                                        <span class="app-stat-label">On going</span>
+                                        <strong>{{ stats.ongoing }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-xl-2 col-md-4 col-sm-6">
+                                    <div class="app-stat app-stat-danger">
+                                        <span class="app-stat-icon"><i class="feather icon-alert-circle"></i></span>
+                                        <span class="app-stat-label">Not yet</span>
+                                        <strong>{{ stats.not_yet }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By status', chart_data.status, 'icon-activity') }}
+                                </div>
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By area', chart_data.area, 'icon-map-pin') }}
+                                </div>
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By shift', chart_data.shift, 'icon-clock') }}
+                                </div>
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By QC', chart_data.qc, 'icon-user-check') }}
+                                </div>
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By vessel', chart_data.vessel, 'icon-anchor') }}
+                                </div>
+                                <div class="col-xl-4 col-md-6">
+                                    {{ bar_chart('By deviation type', chart_data.deviation_type, 'icon-tag') }}
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xl-4 col-lg-6">
+                                    <div class="card app-panel">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5>Overdue deviations</h5>
+                                            <span class="app-panel-note">{{ overdue_after_days }}+ days open</span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="app-activity-list">
+                                                {% for deviation in overdue_deviations %}
+                                                    <a class="app-activity app-activity-danger" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
+                                                        <span class="app-activity-mark"></span>
+                                                        <span>
+                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
+                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | {{ deviation.area|default('Yard') }}</small>
+                                                            <small>{{ qc_map.get(deviation.qc_id, deviation.qc_id) }}</small>
+                                                        </span>
+                                                        <em>{{ deviation.status|default('') }}</em>
+                                                    </a>
+                                                {% else %}
+                                                    <div class="app-empty">
+                                                        <i class="feather icon-check-circle"></i>
+                                                        <span>No overdue deviations</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6">
+                                    <div class="card app-panel">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5>Open deviations</h5>
+                                            <a class="app-link" href="{{ url_for('home_blueprint.deviations') }}">Open all</a>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="app-activity-list">
+                                                {% for deviation in open_deviations %}
+                                                    <a class="app-activity" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
+                                                        <span class="app-activity-mark"></span>
+                                                        <span>
+                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
+                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | {{ deviation.area|default('Yard') }}</small>
+                                                            <small>{{ vessel_map.get((deviation.vessel_ids|default([])|first), 'No vessel') }}</small>
+                                                        </span>
+                                                        <em>{{ deviation.status|default('') }}</em>
+                                                    </a>
+                                                {% else %}
+                                                    <div class="app-empty">
+                                                        <i class="feather icon-check-circle"></i>
+                                                        <span>No open deviations</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-12">
+                                    <div class="card app-panel">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5>Recent deviations</h5>
+                                            <a class="app-link" href="{{ url_for('home_blueprint.deviations') }}">Open all</a>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="app-activity-list">
+                                                {% for deviation in latest_deviations %}
+                                                    <a class="app-activity" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
+                                                        <span class="app-activity-mark"></span>
+                                                        <span>
+                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
+                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | TS {{ deviation.ts }}</small>
+                                                        </span>
+                                                        <em>{{ deviation.status|default('') }}</em>
+                                                    </a>
+                                                {% else %}
+                                                    <div class="app-empty">
+                                                        <i class="feather icon-inbox"></i>
+                                                        <span>No deviations recorded yet</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}
