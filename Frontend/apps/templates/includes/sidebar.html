@@ -5,7 +5,6 @@
             <a href="/" class="b-brand">
                 <span class="brand-lockup">
                     <img class="brand-logo brand-logo-light" src="{{ config.ASSETS_ROOT }}/images/apm-logo.png" alt="APM Terminals">
-                    <img class="brand-logo brand-logo-dark" src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="APM Terminals">
                     <span class="b-title">Deviation Control</span>
                 </span>
             </a>
@@ -47,12 +46,24 @@
                         <span class="pcoded-mtext">Manage Users</span>
                     </a>
                 </li>
+                <li class="nav-item {% if 'notifications' in segment %} active {% endif %}">
+                    <a href="{{ url_for('home_blueprint.notifications') }}" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-bell"></i></span>
+                        <span class="pcoded-mtext">Notifications</span>
+                        {% if app_unread_notifications %}
+                        <span class="pcoded-badge badge badge-danger">{{ app_unread_notifications }}</span>
+                        {% endif %}
+                    </a>
+                </li>
                 {% endif %}
                 <li class="nav-item app-sidebar-logout">
-                    <a href="{{ url_for('authentication_blueprint.logout') }}" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-power"></i></span>
-                        <span class="pcoded-mtext">Logout</span>
-                    </a>
+                    <form method="post" action="{{ url_for('authentication_blueprint.logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-link">
+                            <span class="pcoded-micon"><i class="feather icon-power"></i></span>
+                            <span class="pcoded-mtext">Logout</span>
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>

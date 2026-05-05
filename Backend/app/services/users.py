@@ -9,6 +9,7 @@ from app.schemas.user import UserCreate, UserUpdate
 from app.services.base import commit_or_400
 
 
+# First-account bootstrap
 def bootstrap_admin(db: Session, payload: BootstrapAdminCreate) -> User:
     if db.query(User).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Bootstrap is disabled after first user")
@@ -24,6 +25,7 @@ def bootstrap_admin(db: Session, payload: BootstrapAdminCreate) -> User:
     return commit_or_400(db, user)
 
 
+# Login authentication
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
     user = db.query(User).filter(User.email == email.lower()).first()
     if not user or not verify_password(password, user.password):
@@ -33,6 +35,7 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     return user
 
 
+# Admin-created user
 def create_user(db: Session, payload: UserCreate) -> User:
     user = User(
         firstName=payload.firstName,
@@ -46,6 +49,7 @@ def create_user(db: Session, payload: UserCreate) -> User:
     return commit_or_400(db, user)
 
 
+# Self-registration pending approval
 def register_pending_user(db: Session, payload: PendingUserRegister) -> User:
     if not db.query(User).first():
         raise HTTPException(
@@ -65,6 +69,7 @@ def register_pending_user(db: Session, payload: PendingUserRegister) -> User:
     return commit_or_400(db, user)
 
 
+# Role assignment policy
 def create_user_with_role_rules(db: Session, payload: UserCreate, current_user: User) -> User:
     if current_user.role == UserRole.admin and payload.role != UserRole.user:
         raise HTTPException(
@@ -81,6 +86,7 @@ def create_user_with_role_rules(db: Session, payload: UserCreate, current_user: 
     return create_user(db, payload)
 
 
+# User read operations
 def list_users(db: Session) -> list[User]:
     return db.query(User).order_by(User.id).all()
 
@@ -92,6 +98,7 @@ def get_user(db: Session, user_id: int) -> User:
     return user
 
 
+# Role update guard
 def _ensure_role_allowed(role: UserRole | None, current_user: User) -> None:
     if role is None:
         return
@@ -109,6 +116,7 @@ def _ensure_role_allowed(role: UserRole | None, current_user: User) -> None:
         )
 
 
+# Admin user update
 def update_user(db: Session, user_id: int, payload: UserUpdate, current_user: User) -> User:
     user = get_user(db, user_id)
     data = payload.model_dump(exclude_unset=True)
@@ -140,6 +148,7 @@ def update_user(db: Session, user_id: int, payload: UserUpdate, current_user: Us
     return commit_or_400(db, user)
 
 
+# Admin user deletion
 def delete_user(db: Session, user_id: int, current_user: User) -> None:
     user = get_user(db, user_id)
     if user.id == current_user.id:

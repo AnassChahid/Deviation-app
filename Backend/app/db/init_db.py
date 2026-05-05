@@ -2,19 +2,13 @@ from urllib.parse import quote_plus, unquote_plus
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
-from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
 from app.core.config import settings
 from app.db.base import Base
-from app.db.session import SessionLocal, engine
-from app.models.user import User, UserRole
+from app.db.session import engine
 
 
-SUPERUSER_EMAIL = "apmtsuperUser@apmterminals.com"
-SUPERUSER_PASSWORD = "apmt@superuser"
-
-
+# SQL Server connection helpers
 def _split_odbc_connect(odbc_connect: str) -> dict[str, str]:
     parts = {}
     for item in unquote_plus(odbc_connect).split(";"):
@@ -56,6 +50,7 @@ def _database_name_and_master_url() -> tuple[str | None, str]:
     return database_name, str(database_url.set(database="master"))
 
 
+# Database creation
 def ensure_database_exists() -> None:
     database_name, master_url = _database_name_and_master_url()
 
@@ -77,18 +72,21 @@ def ensure_database_exists() -> None:
     master_engine.dispose()
 
 
+# Startup database initialization
 def init_db() -> None:
-    ensure_database_exists()
+    if settings.auto_create_database:
+        ensure_database_exists()
     Base.metadata.create_all(bind=engine)
     ensure_user_role_column_supports_superuser()
     ensure_user_shift_column()
     ensure_user_active_column()
     ensure_deviation_columns()
+    ensure_notification_columns()
     ensure_deviation_type_kind_column_removed()
     ensure_qc_vessel_relation_removed()
-    seed_superuser()
 
 
+# User table compatibility migrations
 def ensure_user_role_column_supports_superuser() -> None:
     with engine.begin() as connection:
         users_table_exists = connection.execute(text("SELECT OBJECT_ID('users', 'U')")).scalar()
@@ -118,6 +116,7 @@ def ensure_user_active_column() -> None:
             connection.execute(text("ALTER TABLE users ADD active BIT NOT NULL CONSTRAINT DF_users_active DEFAULT 1"))
 
 
+# Deviation table compatibility migrations
 def ensure_deviation_columns() -> None:
     with engine.begin() as connection:
         deviations_table_exists = connection.execute(text("SELECT OBJECT_ID('deviations', 'U')")).scalar()
@@ -137,6 +136,31 @@ def ensure_deviation_columns() -> None:
             connection.execute(text("ALTER TABLE deviations ADD area VARCHAR(80) NOT NULL CONSTRAINT DF_deviations_area DEFAULT 'Yard'"))
 
 
+# Notification table compatibility migrations
+def ensure_notification_columns() -> None:
+    with engine.begin() as connection:
+        notifications_table_exists = connection.execute(text("SELECT OBJECT_ID('notifications', 'U')")).scalar()
+        if not notifications_table_exists:
+            return
+
+        read_exists = connection.execute(text("SELECT COL_LENGTH('notifications', 'read')")).scalar()
+        is_read_exists = connection.execute(text("SELECT COL_LENGTH('notifications', 'is_read')")).scalar()
+
+        if read_exists is not None and is_read_exists is None:
+            connection.execute(text("EXEC sp_rename 'notifications.read', 'is_read', 'COLUMN'"))
+        elif read_exists is None and is_read_exists is None:
+            connection.execute(text("ALTER TABLE notifications ADD is_read BIT NOT NULL CONSTRAINT DF_notifications_is_read DEFAULT 0"))
+
+        deviation_id_nullable = connection.execute(text("""
+            SELECT is_nullable
+            FROM sys.columns
+            WHERE object_id = OBJECT_ID('notifications') AND name = 'deviation_id'
+        """)).scalar()
+        if deviation_id_nullable == 0:
+            connection.execute(text("ALTER TABLE notifications ALTER COLUMN deviation_id INT NULL"))
+
+
+# Legacy column cleanup
 def ensure_deviation_type_kind_column_removed() -> None:
     with engine.begin() as connection:
         deviations_table_exists = connection.execute(text("SELECT OBJECT_ID('deviations', 'U')")).scalar()
@@ -183,28 +207,3 @@ def ensure_qc_vessel_relation_removed() -> None:
             IF @sql <> N'' EXEC sp_executesql @sql;
         """))
         connection.execute(text("ALTER TABLE qcs DROP COLUMN vessel_id"))
-
-
-def seed_superuser() -> None:
-    db: Session = SessionLocal()
-    try:
-        existing_user = db.query(User).filter(User.email == SUPERUSER_EMAIL.lower()).first()
-        if existing_user:
-            existing_user.role = UserRole.superuser
-            existing_user.password = hash_password(SUPERUSER_PASSWORD)
-            existing_user.active = True
-            db.commit()
-            return
-
-        superuser = User(
-            firstName="APMT",
-            lastName="SuperUser",
-            email=SUPERUSER_EMAIL.lower(),
-            password=hash_password(SUPERUSER_PASSWORD),
-            role=UserRole.superuser,
-            active=True,
-        )
-        db.add(superuser)
-        db.commit()
-    finally:
-        db.close()

@@ -3,7 +3,9 @@
 Copyright (c) 2019 - present AppSeed.us
 """
 
-import os, random, string
+import os
+import random
+import string
 
 class Config(object):
 
@@ -15,9 +17,9 @@ class Config(object):
     FRONTEND_AUTH_MODE = os.getenv('FRONTEND_AUTH_MODE', 'backend').lower()
     
     # Set up the App SECRET_KEY
-    SECRET_KEY  = os.getenv('SECRET_KEY', None)
+    SECRET_KEY = os.getenv('SECRET_KEY', None)
     if not SECRET_KEY:
-        SECRET_KEY = ''.join(random.choice( string.ascii_lowercase  ) for i in range( 32 ))
+        SECRET_KEY = ''.join(random.choice(string.ascii_lowercase) for i in range(32))
 
     # Social AUTH context
     SOCIAL_AUTH_GITHUB  = False
@@ -34,8 +36,13 @@ class ProductionConfig(Config):
 
     # Security
     SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_DURATION = 3600
+    PREFERRED_URL_SCHEME = 'https'
 
 class DebugConfig(Config):
     DEBUG = True

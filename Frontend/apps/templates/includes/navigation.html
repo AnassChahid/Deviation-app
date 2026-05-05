@@ -5,7 +5,6 @@
         <a href="/" class="b-brand">
             <span class="brand-lockup">
                 <img class="brand-logo brand-logo-light" src="{{ config.ASSETS_ROOT }}/images/apm-logo.png" alt="APM Terminals">
-                <img class="brand-logo brand-logo-dark" src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="APM Terminals">
                 <span class="b-title">Deviation Control</span>
             </span>
         </a>
@@ -15,12 +14,40 @@
     </a>
     <div class="collapse navbar-collapse">
         <ul class="navbar-nav ml-auto">
+            {% if current_user.role in ['admin', 'superuser'] %}
             <li>
-                <label>
-                    <i class="icon feather icon-sun" id="theme-indicator"></i>
-                    <input type="checkbox" id="theme-switch" class="d-none">
-                </label>
+                <div class="dropdown app-notification-menu">
+                    <a href="javascript:" class="dropdown-toggle app-notification-toggle" data-toggle="dropdown" title="Notifications">
+                        <i class="feather icon-bell"></i>
+                        {% if app_unread_notifications %}
+                        <span class="app-notification-badge">{{ app_unread_notifications }}</span>
+                        {% endif %}
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right app-notification-dropdown">
+                        <div class="app-notification-head">
+                            <strong>Notifications</strong>
+                            <a href="{{ url_for('home_blueprint.notifications') }}">View all</a>
+                        </div>
+                        {% if app_notifications %}
+                            {% for notification in app_notifications %}
+                            <form method="post" action="{{ url_for('home_blueprint.notification_read', notification_id=notification.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% if notification.deviation_id %}
+                                <input type="hidden" name="deviation_id" value="{{ notification.deviation_id }}">
+                                {% endif %}
+                                <button type="submit" class="app-notification-item {% if not notification.read %}is-unread{% endif %}">
+                                    <span>{{ notification.title }}</span>
+                                    <small>{{ notification.message }}</small>
+                                </button>
+                            </form>
+                            {% endfor %}
+                        {% else %}
+                            <div class="app-notification-empty">No notifications</div>
+                        {% endif %}
+                    </div>
+                </div>
             </li>
+            {% endif %}
             <li>
                 <div class="dropdown drp-user">
                     <a href="javascript:" class="dropdown-toggle app-user-chip" data-toggle="dropdown">
@@ -33,18 +60,25 @@
                         </span>
                         <i class="feather icon-chevron-down app-user-chevron"></i>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-right profile-notification">
-                        <div class="pro-head">
-                            <span>{{ current_user.first_name }} {{ current_user.last_name }}</span>
-                            <a href="{{ url_for('authentication_blueprint.logout') }}" class="dud-logout" title="Logout">
-                                <i class="feather icon-log-out"></i>
-                            </a>
+                    <div class="dropdown-menu dropdown-menu-right profile-notification app-user-menu">
+                        <div class="app-user-menu-head">
+                            <span class="app-user-menu-avatar">
+                                <i class="feather icon-user"></i>
+                            </span>
+                            <div class="app-user-menu-meta">
+                                <strong>{{ current_user.first_name }} {{ current_user.last_name }}</strong>
+                                <small>{{ current_user.role }}</small>
+                            </div>
                         </div>
-                        <ul class="pro-body">
+                        <ul class="pro-body app-user-menu-body">
                             <li>
-                                <a href="{{ url_for('authentication_blueprint.logout') }}" class="dropdown-item">
-                                    <i class="feather icon-lock"></i> Logout
-                                </a>
+                                <form method="post" action="{{ url_for('authentication_blueprint.logout') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="feather icon-log-out"></i>
+                                        <span>Logout</span>
+                                    </button>
+                                </form>
                             </li>
                         </ul>
                     </div>

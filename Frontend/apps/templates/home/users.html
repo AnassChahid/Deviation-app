@@ -4,7 +4,7 @@
 
 {% block content %}
 
-    <div class="pcoded-main-container">
+    <div class="pcoded-main-container mt-4">
         <div class="pcoded-wrapper">
             <div class="pcoded-content">
                 <div class="pcoded-inner-content">
@@ -27,58 +27,138 @@
                                 </button>
                             </div>
 
-                            <div class="card">
+                            <div class="card app-table-card">
                                 <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5>User directory</h5>
+                                    <h5>Browse records</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Shift</th>
-                                                <th>Role</th>
-                                                <th>Status</th>
-                                                <th class="text-right">Actions</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            {% for user in users %}
-                                            <tr>
-                                                <td>{{ user.id }}</td>
-                                                <td>{{ user.firstName }} {{ user.lastName }}</td>
-                                                <td>{{ user.email }}</td>
-                                                <td>
-                                                    {% if user.shift %}
-                                                        <span class="app-chip app-chip-muted">{{ user.shift }}</span>
-                                                    {% else %}
-                                                        <span class="text-muted">Not assigned</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td><span class="badge badge-primary">{{ user.role }}</span></td>
-                                                <td>
-                                                    {% if user.active %}
-                                                        <span class="badge badge-success">Active</span>
-                                                    {% else %}
-                                                        <span class="badge badge-secondary">Inactive</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td class="text-right">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#readUser{{ user.id }}"><i class="feather icon-eye"></i>Details</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#editUser{{ user.id }}"><i class="feather icon-edit-2"></i>Edit</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteUser{{ user.id }}"><i class="feather icon-trash-2"></i>Delete</button>
-                                                </td>
-                                            </tr>
-                                            {% else %}
-                                            <tr>
-                                                <td colspan="7" class="text-center text-muted">No users found</td>
-                                            </tr>
-                                            {% endfor %}
-                                            </tbody>
-                                        </table>
+                                    <div class="app-filter-panel">
+                                        <div class="app-user-filter-grid">
+                                            <div>
+                                                <div class="form-group">
+                                                    <label for="filterUserSearch">Search</label>
+                                                    <div class="app-search-control">
+                                                        <i class="feather icon-search"></i>
+                                                        <input id="filterUserSearch" type="search" class="form-control" placeholder="Search users">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="form-group">
+                                                    <label for="filterUserShift">Shift</label>
+                                                    <select id="filterUserShift" class="form-control custom-select">
+                                                        <option value="">All shifts</option>
+                                                        <option value="not assigned">Not assigned</option>
+                                                        {% for shift in shift_options %}
+                                                            <option value="{{ shift|lower }}">{{ shift }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="form-group">
+                                                    <label for="filterUserRole">Role</label>
+                                                    <select id="filterUserRole" class="form-control custom-select">
+                                                        <option value="">All roles</option>
+                                                        {% for role in role_options %}
+                                                            <option value="{{ role }}">{{ role }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="form-group">
+                                                    <label for="filterUserStatus">Status</label>
+                                                    <select id="filterUserStatus" class="form-control custom-select">
+                                                        <option value="">All statuses</option>
+                                                        <option value="active">Active</option>
+                                                        <option value="inactive">Inactive</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="app-table-shell">
+                                        <div class="app-table-title-row">
+                                            <div>
+                                                <span>User records</span>
+                                                <small id="usersTableInfo" class="text-muted"></small>
+                                            </div>
+                                            <button id="clearUserFilters" type="button" class="btn btn-outline-secondary btn-sm">
+                                                <i class="feather icon-x"></i>
+                                                Clear filters
+                                            </button>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover app-data-table" id="usersTable">
+                                                <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Shift</th>
+                                                    <th>Role</th>
+                                                    <th>Status</th>
+                                                    <th class="text-right">Actions</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {% for user in users %}
+                                                <tr data-search="{{ (user.id ~ ' ' ~ user.firstName ~ ' ' ~ user.lastName ~ ' ' ~ user.email ~ ' ' ~ user.shift|default('Not assigned', true) ~ ' ' ~ user.role ~ ' ' ~ ('Active' if user.active else 'Inactive'))|lower }}"
+                                                    data-shift="{{ user.shift|default('not assigned', true)|lower }}"
+                                                    data-role="{{ user.role }}"
+                                                    data-status="{% if user.active %}active{% else %}inactive{% endif %}">
+                                                    <td>{{ user.id }}</td>
+                                                    <td>{{ user.firstName }} {{ user.lastName }}</td>
+                                                    <td>{{ user.email }}</td>
+                                                    <td>
+                                                        {% if user.shift %}
+                                                            <span class="app-chip app-chip-muted">{{ user.shift }}</span>
+                                                        {% else %}
+                                                            <span class="text-muted">Not assigned</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td><span class="badge badge-primary">{{ user.role }}</span></td>
+                                                    <td>
+                                                        {% if user.active %}
+                                                            <span class="badge badge-success">Active</span>
+                                                        {% else %}
+                                                            <span class="badge badge-secondary">Inactive</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#readUser{{ user.id }}" title="Details"><i class="feather icon-eye"></i></button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#editUser{{ user.id }}" title="Edit"><i class="feather icon-edit-2"></i></button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteUser{{ user.id }}" title="Delete"><i class="feather icon-trash-2"></i></button>
+                                                    </td>
+                                                </tr>
+                                                {% else %}
+                                                <tr data-empty="true">
+                                                    <td colspan="7" class="text-center text-muted">No users found</td>
+                                                </tr>
+                                                {% endfor %}
+                                                <tr id="usersNoMatches" style="display: none;">
+                                                    <td colspan="7" class="text-center text-muted">No matching users</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="app-table-footer app-table-footer-centered d-flex justify-content-between align-items-center">
+                                        <div id="usersTablePageInfo" class="text-muted"></div>
+                                        <div class="app-page-size-control app-page-size-control-centered">
+                                            <label for="usersPageSize">Rows</label>
+                                            <select id="usersPageSize" class="form-control custom-select">
+                                                <option value="10">10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <nav>
+                                            <ul class="pagination mb-0" id="usersTablePagination"></ul>
+                                        </nav>
                                     </div>
                                 </div>
                             </div>
@@ -87,6 +167,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.user_create') }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="createUserLabel">Add User</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -212,6 +293,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.user_edit', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="editUserLabel{{ user.id }}">Edit User</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -275,6 +357,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.user_delete', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="deleteUserLabel{{ user.id }}">Delete User</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -301,3 +384,105 @@
     </div>
 
 {% endblock content %}
+
+{% block javascripts %}
+<script>
+    (function () {
+        const table = document.getElementById('usersTable');
+        if (!table) {
+            return;
+        }
+
+        const rows = Array.from(table.querySelectorAll('tbody tr')).filter(row => !row.dataset.empty && row.id !== 'usersNoMatches');
+        const filters = {
+            search: document.getElementById('filterUserSearch'),
+            shift: document.getElementById('filterUserShift'),
+            role: document.getElementById('filterUserRole'),
+            status: document.getElementById('filterUserStatus'),
+            pageSize: document.getElementById('usersPageSize')
+        };
+        const info = document.getElementById('usersTableInfo');
+        const pageInfo = document.getElementById('usersTablePageInfo');
+        const pagination = document.getElementById('usersTablePagination');
+        const clearButton = document.getElementById('clearUserFilters');
+        const noMatches = document.getElementById('usersNoMatches');
+        let currentPage = 1;
+
+        function matches(row) {
+            const search = filters.search.value.trim().toLowerCase();
+            const shift = filters.shift.value.trim().toLowerCase();
+            const role = filters.role.value.trim();
+            const status = filters.status.value.trim();
+
+            return (!search || (row.dataset.search || '').includes(search)) &&
+                (!shift || row.dataset.shift === shift) &&
+                (!role || row.dataset.role === role) &&
+                (!status || row.dataset.status === status);
+        }
+
+        function render() {
+            const visibleRows = rows.filter(matches);
+            const pageSize = Number(filters.pageSize.value);
+            const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+            currentPage = Math.min(currentPage, pageCount);
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+
+            rows.forEach(row => row.style.display = 'none');
+            visibleRows.slice(start, end).forEach(row => row.style.display = '');
+
+            if (noMatches) {
+                noMatches.style.display = rows.length && !visibleRows.length ? '' : 'none';
+            }
+
+            const message = visibleRows.length
+                ? `Showing ${start + 1}-${Math.min(end, visibleRows.length)} of ${visibleRows.length} users`
+                : 'No matching users';
+
+            if (info) {
+                info.textContent = message;
+            }
+
+            if (pageInfo) {
+                pageInfo.textContent = message;
+            }
+
+            pagination.innerHTML = '';
+            for (let page = 1; page <= pageCount; page += 1) {
+                const item = document.createElement('li');
+                item.className = `page-item ${page === currentPage ? 'active' : ''}`;
+                const link = document.createElement('button');
+                link.type = 'button';
+                link.className = 'page-link';
+                link.textContent = page;
+                link.addEventListener('click', function () {
+                    currentPage = page;
+                    render();
+                });
+                item.appendChild(link);
+                pagination.appendChild(item);
+            }
+        }
+
+        Object.values(filters).forEach(input => {
+            input.addEventListener('input', function () {
+                currentPage = 1;
+                render();
+            });
+            input.addEventListener('change', function () {
+                currentPage = 1;
+                render();
+            });
+        });
+
+        clearButton.addEventListener('click', function () {
+            Object.values(filters).forEach(input => input.value = '');
+            filters.pageSize.value = '10';
+            currentPage = 1;
+            render();
+        });
+
+        render();
+    })();
+</script>
+{% endblock javascripts %}

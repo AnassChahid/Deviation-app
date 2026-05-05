@@ -5,17 +5,26 @@ from datetime import date, datetime, timedelta
 
 from apps import api_client
 from apps.home import blueprint
-from flask import current_app, flash, redirect, render_template, request, session, url_for
+from flask import flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
-from jinja2 import TemplateNotFound
 
 SHIFT_TYPES = ('Shift A', 'Shift B', 'Shift C', 'Shift D')
 AREA_TYPES = ('Yard', 'Quay Side', 'PMTT', 'Pinning', 'Lash', 'Vessel')
 STATUS_TYPES = ('Done', 'On going', 'Not Yet')
 USER_ROLES = ('user', 'admin', 'superuser')
 OVERDUE_AFTER_DAYS = 7
+DASHBOARD_COLORS = (
+    '#2563eb',
+    '#16a34a',
+    '#f59e0b',
+    '#dc2626',
+    '#7c3aed',
+    '#0f766e',
+    '#64748b',
+)
 
 
+# Authentication/session helpers
 def _access_token():
     token = session.get('access_token')
     if not token:
@@ -23,6 +32,7 @@ def _access_token():
     return token
 
 
+# Shared form option loaders
 def _deviation_type_options():
     access_token = _access_token()
     if not access_token:
@@ -57,6 +67,7 @@ def _form_options():
     return deviation_type_options, qc_options, vessel_options
 
 
+# Dashboard data helpers
 def _chart_rows(counter, total):
     rows = []
     for label, count in counter.most_common():
@@ -75,6 +86,58 @@ def _parse_date(value):
         return datetime.strptime(value, '%Y-%m-%d').date()
     except ValueError:
         return None
+
+
+def _selected_dashboard_filters():
+    return {
+        'date_from': request.args.get('date_from', '').strip(),
+        'date_to': request.args.get('date_to', '').strip(),
+        'vessel_id': request.args.get('vessel_id', '').strip(),
+        'area': request.args.get('area', '').strip(),
+        'deviation_type_id': request.args.get('deviation_type_id', '').strip(),
+        'status': request.args.get('status', '').strip(),
+        'shift': request.args.get('shift', '').strip(),
+    }
+
+
+def _matches_int_filter(value, selected):
+    if not selected:
+        return True
+    try:
+        return int(selected) == value
+    except (TypeError, ValueError):
+        return False
+
+
+def _filter_dashboard_rows(rows, selected):
+    date_from = _parse_date(selected.get('date_from'))
+    date_to = _parse_date(selected.get('date_to'))
+    filtered = []
+
+    for row in rows:
+        row_date = _parse_date(row.get('date'))
+        if date_from and (not row_date or row_date < date_from):
+            continue
+        if date_to and (not row_date or row_date > date_to):
+            continue
+        if selected.get('area') and row.get('area') != selected['area']:
+            continue
+        if selected.get('status') and row.get('status') != selected['status']:
+            continue
+        if selected.get('shift') and row.get('shiftType') != selected['shift']:
+            continue
+        if not _matches_int_filter(row.get('deviation_type_id'), selected.get('deviation_type_id')):
+            continue
+        if selected.get('vessel_id'):
+            try:
+                vessel_id = int(selected['vessel_id'])
+            except ValueError:
+                continue
+            if vessel_id not in (row.get('vessel_ids') or []):
+                continue
+        filtered.append(row)
+
+    return filtered
 
 
 def _dashboard_datasets(rows, deviation_type_map, qc_map, vessel_map):
@@ -107,9 +170,167 @@ def _dashboard_datasets(rows, deviation_type_map, qc_map, vessel_map):
     }
 
 
+def _dashboard_pie(rows):
+    if not rows:
+        return {
+            'total': 0,
+            'gradient': '#e5e7eb 0 100%',
+            'rows': [],
+        }
+
+    total = sum(row['count'] for row in rows)
+    display_rows = rows[:6]
+    other_count = sum(row['count'] for row in rows[6:])
+    if other_count:
+        display_rows = [*display_rows, {'label': 'Other', 'count': other_count}]
+
+    cursor = 0
+    gradient_parts = []
+    pie_rows = []
+
+    for index, row in enumerate(display_rows):
+        percent = round((row['count'] / total) * 100, 1) if total else 0
+        start = cursor
+        end = 100 if index == len(display_rows) - 1 else cursor + percent
+        color = DASHBOARD_COLORS[index % len(DASHBOARD_COLORS)]
+        gradient_parts.append(f'{color} {start}% {end}%')
+        pie_rows.append({**row, 'color': color, 'percent': percent})
+        cursor = end
+
+    return {
+        'total': total,
+        'gradient': ', '.join(gradient_parts) if gradient_parts else '#e5e7eb 0 100%',
+        'rows': pie_rows,
+    }
+
+
+def _dashboard_pareto(rows):
+    if not rows:
+        return {'total': 0, 'rows': []}
+
+    total = sum(row['count'] for row in rows)
+    max_count = max((row['count'] for row in rows), default=1)
+    cumulative = 0
+    pareto_rows = []
+
+    for row in rows[:10]:
+        cumulative += row['count']
+        pareto_rows.append({
+            **row,
+            'bar_percent': round((row['count'] / max_count) * 100) if max_count else 0,
+            'cumulative_percent': round((cumulative / total) * 100) if total else 0,
+        })
+
+    return {'total': total, 'rows': pareto_rows}
+
+
+def _dashboard_cross(rows, label_getter, group_getter):
+    label_counter = Counter(label_getter(row) for row in rows)
+    group_counter = Counter(group_getter(row) for row in rows)
+    labels = [label for label, _ in label_counter.most_common(8)]
+    groups = [group for group, _ in group_counter.most_common(6)]
+    datasets = []
+
+    for index, group in enumerate(groups):
+        datasets.append({
+            'label': group,
+            'data': [
+                sum(
+                    1 for row in rows
+                    if label_getter(row) == label and group_getter(row) == group
+                )
+                for label in labels
+            ],
+            'color': DASHBOARD_COLORS[index % len(DASHBOARD_COLORS)],
+        })
+
+    return {'labels': labels, 'datasets': datasets}
+
+
+def _dashboard_pagination(total_items, page, per_page):
+    page_count = max((total_items + per_page - 1) // per_page, 1)
+    current_page = min(max(page or 1, 1), page_count)
+    start = (current_page - 1) * per_page
+    end = start + per_page
+    window_start = max(1, current_page - 2)
+    window_end = min(page_count, current_page + 2)
+
+    def page_url(page_number):
+        args = request.args.to_dict()
+        args['page'] = page_number
+        return url_for('home_blueprint.index', **args)
+
+    return {
+        'page': current_page,
+        'per_page': per_page,
+        'total': total_items,
+        'pages': page_count,
+        'start': start,
+        'end': end,
+        'start_item': start + 1 if total_items else 0,
+        'end_item': min(end, total_items),
+        'prev_url': page_url(current_page - 1) if current_page > 1 else None,
+        'next_url': page_url(current_page + 1) if current_page < page_count else None,
+        'page_links': [
+            {'number': number, 'url': page_url(number), 'is_current': number == current_page}
+            for number in range(window_start, window_end + 1)
+        ],
+    }
+
+
+def _dashboard_pivot(rows, row_getter, column_getter, row_heading):
+    row_counter = Counter(row_getter(row) for row in rows)
+    column_counter = Counter(column_getter(row) for row in rows)
+    row_labels = [label for label, _ in row_counter.most_common(8)]
+    column_labels = [label for label, _ in column_counter.most_common(7)]
+    pivot_rows = []
+
+    for row_label in row_labels:
+        counts = []
+        total = 0
+        for column_label in column_labels:
+            count = sum(
+                1 for row in rows
+                if row_getter(row) == row_label and column_getter(row) == column_label
+            )
+            counts.append(count)
+            total += count
+        pivot_rows.append({'label': row_label, 'counts': counts, 'total': total})
+
+    return {
+        'row_heading': row_heading,
+        'columns': column_labels,
+        'rows': sorted(pivot_rows, key=lambda item: item['total'], reverse=True),
+    }
+
+
+def _dashboard_table_rows(rows, deviation_type_map, qc_map, vessel_map):
+    table_rows = []
+    today = date.today()
+
+    for row in rows:
+        row_date = _parse_date(row.get('date'))
+        days_open = (today - row_date).days if row_date and row.get('status') != 'Done' else None
+        vessel_names = [
+            vessel_map.get(vessel_id, str(vessel_id))
+            for vessel_id in (row.get('vessel_ids') or [])
+        ]
+        table_rows.append({
+            **row,
+            'deviation_type_name': deviation_type_map.get(row.get('deviation_type_id'), 'Deviation'),
+            'qc_name': qc_map.get(row.get('qc_id'), row.get('qc_id') or 'Unassigned'),
+            'vessel_names': vessel_names,
+            'days_open': days_open,
+            'is_overdue': days_open is not None and days_open > OVERDUE_AFTER_DAYS,
+        })
+
+    return table_rows
+
+
 @blueprint.route('/index')
 @login_required
 def index():
+    # Dashboard view and overdue/open deviation summary.
     access_token = _access_token()
     rows = []
     deviation_type_options = []
@@ -132,12 +353,11 @@ def index():
         except api_client.BackendAPIError as error:
             flash(str(error), 'danger')
 
+    selected_filters = _selected_dashboard_filters()
+    all_rows = rows
+    rows = _filter_dashboard_rows(all_rows, selected_filters)
     total = len(rows)
     done = sum(1 for row in rows if row.get('status') == 'Done')
-    ongoing = sum(1 for row in rows if row.get('status') == 'On going')
-    not_yet = sum(1 for row in rows if row.get('status') == 'Not Yet')
-    latest_deviations = rows[:5]
-    active_type_count = sum(1 for option in deviation_type_options if option.get('active', True))
     deviation_type_map = {option['id']: option['name'] for option in deviation_type_options}
     qc_map = {option['id']: option['qcName'] for option in qc_options}
     vessel_map = {
@@ -151,6 +371,18 @@ def index():
         if (parsed_date := _parse_date(row.get('date'))) and parsed_date < overdue_threshold
     ]
     chart_data = _dashboard_datasets(rows, deviation_type_map, qc_map, vessel_map)
+    dashboard_table_rows = _dashboard_table_rows(rows, deviation_type_map, qc_map, vessel_map)
+    pagination = _dashboard_pagination(
+        len(dashboard_table_rows),
+        request.args.get('page', 1, type=int),
+        25,
+    )
+    latest_deviations = dashboard_table_rows[pagination['start']:pagination['end']]
+    avg_days_open_values = [
+        row['days_open'] for row in dashboard_table_rows
+        if row['days_open'] is not None
+    ]
+    avg_days_open = round(sum(avg_days_open_values) / len(avg_days_open_values), 1) if avg_days_open_values else 0
 
     return render_template(
         'home/index.html',
@@ -158,17 +390,72 @@ def index():
         stats={
             'total': total,
             'done': done,
-            'ongoing': ongoing,
-            'not_yet': not_yet,
             'open': len(open_deviations),
             'overdue': len(overdue_deviations),
-            'active_types': active_type_count,
+            'closure_rate': round((done / total) * 100) if total else 0,
+            'avg_days_open': avg_days_open,
         },
         latest_deviations=latest_deviations,
+        pagination=pagination,
         open_deviations=open_deviations[:6],
         overdue_deviations=overdue_deviations[:6],
         overdue_after_days=OVERDUE_AFTER_DAYS,
         chart_data=chart_data,
+        pie_data={
+            'status': _dashboard_pie(chart_data['status']),
+            'area': _dashboard_pie(chart_data['area']),
+            'deviation_type': _dashboard_pie(chart_data['deviation_type']),
+        },
+        pareto_data={
+            'deviation_type': _dashboard_pareto(chart_data['deviation_type']),
+            'vessel': _dashboard_pareto(chart_data['vessel']),
+            'area': _dashboard_pareto(chart_data['area']),
+        },
+        cross_data={
+            'shift_area': _dashboard_cross(
+                rows,
+                lambda row: row.get('shiftType') or 'Unknown',
+                lambda row: row.get('area') or 'Unknown',
+            ),
+            'vessel_status': _dashboard_cross(
+                rows,
+                lambda row: (
+                    ', '.join(
+                        vessel_map.get(vessel_id, str(vessel_id))
+                        for vessel_id in (row.get('vessel_ids') or [])
+                    ) or 'No vessel'
+                ),
+                lambda row: row.get('status') or 'Unknown',
+            ),
+        },
+        pivot_data={
+            'shift_area': _dashboard_pivot(
+                rows,
+                lambda row: row.get('shiftType') or 'Unknown',
+                lambda row: row.get('area') or 'Unknown',
+                'Shift',
+            ),
+            'area_type': _dashboard_pivot(
+                rows,
+                lambda row: row.get('area') or 'Unknown',
+                lambda row: deviation_type_map.get(row.get('deviation_type_id'), row.get('deviation_type_id') or 'Unknown'),
+                'Area',
+            ),
+            'shift_status': _dashboard_pivot(
+                rows,
+                lambda row: row.get('shiftType') or 'Unknown',
+                lambda row: row.get('status') or 'Unknown',
+                'Shift',
+            ),
+        },
+        selected_filters=selected_filters,
+        filter_options={
+            'areas': sorted({row.get('area') for row in all_rows if row.get('area')} | set(AREA_TYPES)),
+            'statuses': sorted({row.get('status') for row in all_rows if row.get('status')} | set(STATUS_TYPES)),
+            'shifts': sorted({row.get('shiftType') for row in all_rows if row.get('shiftType')} | set(SHIFT_TYPES)),
+            'deviation_types': deviation_type_options,
+            'vessels': vessel_options,
+        },
         deviation_type_map=deviation_type_map,
         qc_map=qc_map,
         vessel_map=vessel_map,
@@ -178,6 +465,7 @@ def index():
 @blueprint.route('/deviations')
 @login_required
 def deviations():
+    # Deviation list view with reference-data maps for table display and filters.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -231,6 +519,7 @@ def deviations():
 @blueprint.route('/deviation-types')
 @login_required
 def deviation_types():
+    # Deviation type administration list.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -241,13 +530,13 @@ def deviation_types():
         rows = []
         flash(str(error), 'danger')
 
-    current_app.logger.info("rendering deviation-types page rows=%s values=%s", len(rows), rows)
     return render_template('home/deviation-types.html', segment='deviation-types', deviation_types=rows)
 
 
 @blueprint.route('/users')
 @login_required
 def users():
+    # User administration list.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -270,6 +559,7 @@ def users():
 @blueprint.route('/vessels')
 @login_required
 def vessels():
+    # Vessel directory list.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -286,6 +576,7 @@ def vessels():
 @blueprint.route('/vessels/create', methods=['GET', 'POST'])
 @login_required
 def vessel_create():
+    # Vessel create form and submission handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -311,6 +602,7 @@ def vessel_create():
 @blueprint.route('/vessels/<int:vessel_id>')
 @login_required
 def vessel_detail(vessel_id):
+    # Vessel detail view.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -327,6 +619,7 @@ def vessel_detail(vessel_id):
 @blueprint.route('/vessels/<int:vessel_id>/edit', methods=['GET', 'POST'])
 @login_required
 def vessel_edit(vessel_id):
+    # Vessel edit form and submission handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -358,6 +651,7 @@ def vessel_edit(vessel_id):
 @blueprint.route('/users/create', methods=['POST'])
 @login_required
 def user_create():
+    # Admin user creation handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -383,6 +677,7 @@ def user_create():
 @blueprint.route('/users/<int:user_id>/edit', methods=['POST'])
 @login_required
 def user_edit(user_id):
+    # Admin user update handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -415,6 +710,7 @@ def user_edit(user_id):
 @blueprint.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 def user_delete(user_id):
+    # Admin user deletion handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -431,6 +727,7 @@ def user_delete(user_id):
 @blueprint.route('/deviation-types/create', methods=['POST'])
 @login_required
 def deviation_type_create():
+    # Deviation type creation handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -452,6 +749,7 @@ def deviation_type_create():
 @blueprint.route('/deviation-types/<int:deviation_type_id>/edit', methods=['POST'])
 @login_required
 def deviation_type_edit(deviation_type_id):
+    # Deviation type update handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -473,6 +771,7 @@ def deviation_type_edit(deviation_type_id):
 @blueprint.route('/deviation-types/<int:deviation_type_id>/delete', methods=['POST'])
 @login_required
 def deviation_type_delete(deviation_type_id):
+    # Deviation type deletion handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -489,6 +788,7 @@ def deviation_type_delete(deviation_type_id):
 @blueprint.route('/deviations/create', methods=['GET', 'POST'])
 @login_required
 def deviation_create():
+    # Deviation create form and submission handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -530,6 +830,7 @@ def deviation_create():
 @blueprint.route('/deviations/<int:deviation_id>')
 @login_required
 def deviation_detail(deviation_id):
+    # Deviation detail view, including audit trail.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -572,6 +873,7 @@ def deviation_detail(deviation_id):
 @blueprint.route('/deviations/<int:deviation_id>/edit', methods=['GET', 'POST'])
 @login_required
 def deviation_edit(deviation_id):
+    # Deviation edit form and submission handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -620,6 +922,7 @@ def deviation_edit(deviation_id):
 @blueprint.route('/deviations/<int:deviation_id>/delete', methods=['POST'])
 @login_required
 def deviation_delete(deviation_id):
+    # Deviation deletion handler.
     access_token = _access_token()
     if not access_token:
         return redirect(url_for('authentication_blueprint.login'))
@@ -633,39 +936,52 @@ def deviation_delete(deviation_id):
     return redirect(url_for('home_blueprint.deviations'))
 
 
-@blueprint.route('/<template>')
+@blueprint.route('/notifications')
 @login_required
-def route_template(template):
+def notifications():
+    access_token = _access_token()
+    if not access_token:
+        return redirect(url_for('authentication_blueprint.login'))
 
     try:
+        rows = api_client.list_notifications(access_token)
+    except api_client.BackendAPIError as error:
+        rows = []
+        flash(str(error), 'danger')
 
-        if not template.endswith('.html'):
-            template += '.html'
-
-        # Detect the current page
-        segment = get_segment(request)
-
-        # Serve the file (if exists) from app/templates/home/FILE.html
-        return render_template("home/" + template, segment=segment)
-
-    except TemplateNotFound:
-        return render_template('home/page-404.html'), 404
-
-    except:
-        return render_template('home/page-500.html'), 500
+    return render_template('home/notifications.html', segment='notifications', notifications=rows)
 
 
-# Helper - Extract current page name from request
-def get_segment(request):
+@blueprint.route('/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def notification_read(notification_id):
+    access_token = _access_token()
+    if not access_token:
+        return redirect(url_for('authentication_blueprint.login'))
+
+    deviation_id = request.form.get('deviation_id', type=int)
+    try:
+        api_client.mark_notification_read(access_token, notification_id)
+    except api_client.BackendAPIError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('home_blueprint.notifications'))
+
+    if deviation_id:
+        return redirect(url_for('home_blueprint.deviation_detail', deviation_id=deviation_id))
+    return redirect(url_for('home_blueprint.notifications'))
+
+
+@blueprint.route('/notifications/read-all', methods=['POST'])
+@login_required
+def notifications_read_all():
+    access_token = _access_token()
+    if not access_token:
+        return redirect(url_for('authentication_blueprint.login'))
 
     try:
+        api_client.mark_all_notifications_read(access_token)
+        flash('Notifications marked as read.', 'success')
+    except api_client.BackendAPIError as error:
+        flash(str(error), 'danger')
 
-        segment = request.path.split('/')[-1]
-
-        if segment == '':
-            segment = 'index'
-
-        return segment
-
-    except:
-        return None
+    return redirect(url_for('home_blueprint.notifications'))

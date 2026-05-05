@@ -4,7 +4,7 @@
 
 {% block content %}
 
-    <div class="pcoded-main-container">
+    <div class="pcoded-main-container mt-4">
         <div class="pcoded-wrapper">
             <div class="pcoded-content">
                 <div class="pcoded-inner-content">
@@ -187,6 +187,7 @@
                                                     <a class="btn btn-sm btn-outline-primary" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}"><i class="feather icon-eye"></i></a>
                                                     <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('home_blueprint.deviation_edit', deviation_id=deviation.id) }}"><i class="feather icon-edit-2"></i></a>
                                                     <form class="d-inline" method="post" action="{{ url_for('home_blueprint.deviation_delete', deviation_id=deviation.id) }}" onsubmit="return confirm('Delete this deviation?');">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="feather icon-trash-2"></i></button>
                                                     </form>
                                                 </td>

@@ -19,6 +19,9 @@ DEBUG = (os.getenv('DEBUG', 'False') == 'True')
 # The configuration
 get_config_mode = 'Debug' if DEBUG else 'Production'
 
+if not DEBUG and not os.getenv('SECRET_KEY'):
+    exit('Error: SECRET_KEY must be set when DEBUG=False')
+
 try:
 
     # Load the configuration using the default values

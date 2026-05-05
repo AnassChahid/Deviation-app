@@ -34,3 +34,11 @@ class DeviationRead(DeviationCreate):
     creator_name: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DeviationPage(BaseModel):
+    items: list[DeviationRead]
+    total: int
+    page: int
+    per_page: int
+    pages: int

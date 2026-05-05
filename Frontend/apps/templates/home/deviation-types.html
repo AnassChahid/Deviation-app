@@ -4,7 +4,7 @@
 
 {% block content %}
 
-    <div class="pcoded-main-container">
+    <div class="pcoded-main-container mt-4">
         <div class="pcoded-wrapper">
             <div class="pcoded-content">
                 <div class="pcoded-inner-content">
@@ -75,6 +75,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.deviation_type_create') }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="createDeviationTypeLabel">Create Deviation Type</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -131,6 +132,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.deviation_type_edit', deviation_type_id=deviation_type.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="editDeviationTypeLabel{{ deviation_type.id }}">Update Deviation Type</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -160,6 +162,7 @@
                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                     <div class="modal-content">
                                         <form method="post" action="{{ url_for('home_blueprint.deviation_type_delete', deviation_type_id=deviation_type.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="deleteDeviationTypeLabel{{ deviation_type.id }}">Delete Deviation Type</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">

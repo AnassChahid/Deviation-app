@@ -1,0 +1,80 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Notifications {% endblock %}
+
+{% block content %}
+
+<div class="pcoded-main-container mt-4">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <div class="page-header">
+                            <div class="page-block">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <div class="page-header-title">
+                                            <h5 class="m-b-10">Notifications</h5>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <form method="post" action="{{ url_for('home_blueprint.notifications_read_all') }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                Mark all read
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <div class="card">
+                            <div class="card-body">
+                                {% if notifications %}
+                                <div class="app-notification-list">
+                                    {% for notification in notifications %}
+                                    <div class="app-notification-row {% if not notification.read %}is-unread{% endif %}">
+                                        <div>
+                                            <strong>{{ notification.title }}</strong>
+                                            <p>{{ notification.message }}</p>
+                                            <small>{{ notification.created_at }}</small>
+                                        </div>
+                                        <form method="post" action="{{ url_for('home_blueprint.notification_read', notification_id=notification.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            {% if notification.deviation_id %}
+                                            <input type="hidden" name="deviation_id" value="{{ notification.deviation_id }}">
+                                            {% endif %}
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                {% if notification.deviation_id %}
+                                                Open deviation
+                                                {% else %}
+                                                Mark read
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="app-empty-state">No notifications yet.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

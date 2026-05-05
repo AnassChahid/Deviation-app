@@ -3,9 +3,8 @@ from flask_wtf import FlaskForm
 from wtforms import SelectField, StringField, PasswordField
 from wtforms.validators import Email, DataRequired, EqualTo, Regexp
 
-# login and registration
 
-
+# Login form
 class LoginForm(FlaskForm):
     username = StringField('Email',
                          id='username_login',
@@ -15,6 +14,7 @@ class LoginForm(FlaskForm):
                              validators=[DataRequired()])
 
 
+# Registration form
 class CreateAccountForm(FlaskForm):
     first_name = StringField('First name',
                              id='first_name_create',

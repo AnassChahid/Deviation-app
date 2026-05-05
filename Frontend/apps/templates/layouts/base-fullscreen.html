@@ -25,8 +25,6 @@
     <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/animation/css/animate.min.css">
     <!-- vendor css -->
     <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/css/style.css">
-    <!-- dark mode css -->
-    <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/css/dark.css">
     <!-- app theme css -->
     <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/css/theme.css">
 
@@ -37,12 +35,6 @@
 <body>
     
     {% block content %}{% endblock content %}
-
-    <!-- Enable the dark mode -->
-    <label class="d-none">
-        <i class="icon feather icon-sun" id="theme-indicator"></i>
-        <input type="checkbox" id="theme-switch" class="d-none">
-    </label>
 
     {% include 'includes/scripts.html' %}
 

@@ -2,6 +2,7 @@ from app.models.deviation import Deviation, DeviationArea, DeviationShift, Devia
 from app.models.deviation_audit import DeviationAudit, DeviationAuditAction
 from app.models.deviation_vessel import deviation_vessels
 from app.models.deviation_type import DeviationType
+from app.models.notification import Notification
 from app.models.qc import QC
 from app.models.user import User, UserRole, UserShift
 from app.models.vessel import Vessel
@@ -15,6 +16,7 @@ __all__ = [
     "DeviationStatus",
     "DeviationType",
     "deviation_vessels",
+    "Notification",
     "QC",
     "User",
     "UserRole",

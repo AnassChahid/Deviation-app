@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from flask import render_template, redirect, request, session, url_for
+from flask import flash, render_template, redirect, request, session, url_for
 from flask_login import (
     current_user,
     login_required,
@@ -14,12 +14,20 @@ from apps.authentication.models import SessionUser
 
 ALLOWED_EMAIL_DOMAIN = '@apmterminals.com'
 
+
+@blueprint.app_errorhandler(api_client.BackendUnauthorized)
+def backend_unauthorized(error):
+    flash(str(error), 'warning')
+    return redirect(url_for('authentication_blueprint.login'))
+
+
+# Default entry point
 @blueprint.route('/')
 def route_default():
     return redirect(url_for('authentication_blueprint.login'))
 
-# Login & Registration
 
+# Login flow
 @blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     login_form = LoginForm(request.form)
@@ -60,6 +68,7 @@ def login():
     return redirect(url_for('home_blueprint.index'))
 
 
+# Registration and pending approval flow
 @blueprint.route('/register', methods=['GET', 'POST'])
 def register():
     create_account_form = CreateAccountForm(request.form)
@@ -127,15 +136,16 @@ def register():
         return render_template('accounts/register.html', form=create_account_form)
 
 
-@blueprint.route('/logout')
+# Logout flow
+@blueprint.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
     session.clear()
     return redirect(url_for('authentication_blueprint.login')) 
 
-# Errors
 
+# Error and unauthorized handlers
 @login_manager.unauthorized_handler
 def unauthorized_handler():
     return redirect(url_for('authentication_blueprint.login'))

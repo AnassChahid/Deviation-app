@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -5,12 +7,17 @@ from sqlalchemy.orm import Session
 from app.models.deviation import Deviation, DeviationStatus
 from app.models.deviation_audit import DeviationAudit, DeviationAuditAction
 from app.models.deviation_type import DeviationType
+from app.models.notification import Notification
 from app.models.qc import QC
 from app.models.user import User, UserRole
 from app.models.vessel import Vessel
 from app.schemas.deviation import DeviationCreate, DeviationUpdate
+from app.services import notifications as notification_service
+
+logger = logging.getLogger(__name__)
 
 
+# Deviation relationship validation
 def _validate_deviation_links(db: Session, deviation_type_id: int | None = None, qc_id: int | None = None) -> None:
     if deviation_type_id is not None:
         deviation_type = db.get(DeviationType, deviation_type_id)
@@ -32,6 +39,7 @@ def _get_vessels(db: Session, vessel_ids: list[int] | None) -> list[Vessel]:
     return vessels
 
 
+# Deviation ownership and access helpers
 def _week_of_year(value) -> str:
     return str(value.isocalendar().week)
 
@@ -54,6 +62,7 @@ def _actor_name(user: User) -> str:
     return f"{user.firstName} {user.lastName}".strip() or user.email
 
 
+# Audit trail helpers
 def _format_value(value) -> str:
     if value is None:
         return "empty"
@@ -96,6 +105,7 @@ def _flush_or_400(db: Session) -> None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate or invalid data") from exc
 
 
+# Change summary builder
 def _changed_fields(deviation: Deviation, update_data: dict) -> list[str]:
     changes = []
     for field, new_value in update_data.items():
@@ -108,6 +118,7 @@ def _changed_fields(deviation: Deviation, update_data: dict) -> list[str]:
     return changes
 
 
+# Create deviation and record audit
 def create_deviation(db: Session, payload: DeviationCreate, current_user: User) -> Deviation:
     _validate_deviation_links(db, payload.deviation_type_id, payload.qc_id)
     vessels = _get_vessels(db, payload.vessel_ids)
@@ -129,20 +140,33 @@ def create_deviation(db: Session, payload: DeviationCreate, current_user: User) 
     _audit(db, deviation.id, DeviationAuditAction.created, current_user)
     _commit_or_400(db)
     db.refresh(deviation)
+
+    try:
+        notification_service.create_deviation_notifications(db, deviation, current_user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to create notifications for deviation %s", deviation.id)
+
     return deviation
 
 
-def list_deviations(db: Session, current_user: User) -> list[Deviation]:
+# List deviations visible to the current user
+def list_deviations(db: Session, current_user: User, page: int, per_page: int) -> tuple[list[Deviation], int]:
     query = db.query(Deviation).order_by(Deviation.date.desc(), Deviation.id.desc())
     if not _can_access_all_deviations(current_user):
         query = query.filter(Deviation.creator_id == current_user.id)
-    return query.all()
+    total = query.count()
+    items = query.offset((page - 1) * per_page).limit(per_page).all()
+    return items, total
 
 
+# Read one accessible deviation
 def get_deviation(db: Session, deviation_id: int, current_user: User) -> Deviation:
     return _get_accessible_deviation(db, deviation_id, current_user)
 
 
+# Update deviation and record update/close audit
 def update_deviation(
     db: Session,
     deviation_id: int,
@@ -178,16 +202,41 @@ def update_deviation(
     db.add(deviation)
     _commit_or_400(db)
     db.refresh(deviation)
+
+    if changes:
+        try:
+            notification_service.create_deviation_update_notifications(db, deviation, current_user)
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Failed to create update notifications for deviation %s", deviation.id)
+
     return deviation
 
 
+# Delete deviation and record audit before removal
 def delete_deviation(db: Session, deviation_id: int, current_user: User) -> None:
     deviation = _get_accessible_deviation(db, deviation_id, current_user)
     _audit(db, deviation.id, DeviationAuditAction.deleted, current_user, f"Deleted deviation {deviation.id}")
+
+    try:
+        notification_service.create_deviation_delete_notifications(db, deviation, current_user)
+        db.flush()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to create delete notifications for deviation %s", deviation.id)
+        deviation = _get_accessible_deviation(db, deviation_id, current_user)
+        _audit(db, deviation.id, DeviationAuditAction.deleted, current_user, f"Deleted deviation {deviation.id}")
+
+    db.query(Notification).filter(Notification.deviation_id == deviation.id).update(
+        {"deviation_id": None},
+        synchronize_session=False,
+    )
     db.delete(deviation)
     _commit_or_400(db)
 
 
+# List audit trail for one accessible deviation
 def list_deviation_audits(db: Session, deviation_id: int, current_user: User) -> list[DeviationAudit]:
     _get_accessible_deviation(db, deviation_id, current_user)
     return (

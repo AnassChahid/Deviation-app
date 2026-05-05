@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 import requests
-from flask import current_app
+from flask import current_app, session
+from flask_login import logout_user
 from requests import RequestException
 
 
@@ -11,6 +12,11 @@ class BackendAPIError(Exception):
         self.status_code = status_code
 
 
+class BackendUnauthorized(Exception):
+    pass
+
+
+# Backend request helpers
 def _base_url():
     return current_app.config.get('BACKEND_API_URL', '').rstrip('/')
 
@@ -31,7 +37,12 @@ def _error_message(response):
     return detail or str(payload)
 
 
-def _raise_for_error(response):
+def _raise_for_error(response, redirect_on_unauthorized=True):
+    if response.status_code == 401 and redirect_on_unauthorized:
+        logout_user()
+        session.clear()
+        raise BackendUnauthorized('Your session expired. Please sign in again.')
+
     if response.status_code >= 400:
         raise BackendAPIError(_error_message(response), response.status_code)
 
@@ -40,13 +51,12 @@ def _auth_headers(access_token):
     return {'Authorization': f'Bearer {access_token}'}
 
 
-def _log_response(method, url, response):
+def _log_response(method, path, response):
     current_app.logger.info(
-        "Backend API %s %s -> %s body=%s",
+        "Backend API %s %s -> %s",
         method,
-        url,
+        path,
         response.status_code,
-        response.text[:500],
     )
 
 
@@ -56,52 +66,36 @@ def _request(method, path, access_token=None, json=None):
     try:
         response = requests.request(method, url, json=json, headers=headers, timeout=10)
     except RequestException as error:
-        current_app.logger.exception("Backend API %s %s failed", method, url)
+        current_app.logger.exception("Backend API %s %s failed", method, path)
         raise BackendAPIError(f'Could not reach backend API: {error}') from error
-    _log_response(method, url, response)
+    _log_response(method, path, response)
     return response
 
 
+# Authentication API
 def login(email, password):
-    try:
-        response = requests.post(
-            f'{_base_url()}/auth/login',
-            json={'email': email, 'password': password},
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
-    _raise_for_error(response)
+    response = _request('POST', '/auth/login', json={'email': email, 'password': password})
+    _raise_for_error(response, redirect_on_unauthorized=False)
     return response.json()
 
 
 def get_current_user(access_token):
-    try:
-        response = requests.get(
-            f'{_base_url()}/auth/me',
-            headers={'Authorization': f'Bearer {access_token}'},
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('GET', '/auth/me', access_token=access_token)
     _raise_for_error(response)
     return response.json()
 
 
 def bootstrap_admin(first_name, last_name, email, password):
-    try:
-        response = requests.post(
-            f'{_base_url()}/auth/bootstrap-admin',
-            json={
-                'firstName': first_name,
-                'lastName': last_name,
-                'email': email,
-                'password': password,
-            },
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request(
+        'POST',
+        '/auth/bootstrap-admin',
+        json={
+            'firstName': first_name,
+            'lastName': last_name,
+            'email': email,
+            'password': password,
+        },
+    )
     _raise_for_error(response)
     return response.json()
 
@@ -116,18 +110,12 @@ def register_pending_user(first_name, last_name, email, password, shift=None):
     if shift:
         payload['shift'] = shift
 
-    try:
-        response = requests.post(
-            f'{_base_url()}/auth/register',
-            json=payload,
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('POST', '/auth/register', json=payload)
     _raise_for_error(response)
     return response.json()
 
 
+# User administration API
 def create_user(access_token, first_name, last_name, email, password, role='user', shift=None, active=True):
     payload = {
         'firstName': first_name,
@@ -140,15 +128,7 @@ def create_user(access_token, first_name, last_name, email, password, role='user
     if shift:
         payload['shift'] = shift
 
-    try:
-        response = requests.post(
-            f'{_base_url()}/users',
-            json=payload,
-            headers={'Authorization': f'Bearer {access_token}'},
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('POST', '/users', access_token=access_token, json=payload)
     _raise_for_error(response)
     return response.json()
 
@@ -176,6 +156,7 @@ def delete_user(access_token, user_id):
     _raise_for_error(response)
 
 
+# Deviation type API
 def list_deviation_types(access_token):
     response = _request('GET', '/deviation-types', access_token=access_token)
     _raise_for_error(response)
@@ -208,15 +189,9 @@ def delete_deviation_type(access_token, deviation_type_id):
     _raise_for_error(response)
 
 
+# Reference data API
 def list_qcs(access_token):
-    try:
-        response = requests.get(
-            f'{_base_url()}/qcs',
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('GET', '/qcs', access_token=access_token)
     _raise_for_error(response)
     return response.json()
 
@@ -245,42 +220,34 @@ def update_vessel(access_token, vessel_id, payload):
     return response.json()
 
 
+# Deviation API
 def list_deviations(access_token):
-    try:
-        response = requests.get(
-            f'{_base_url()}/deviations',
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
-    _raise_for_error(response)
-    return response.json()
+    rows = []
+    page = 1
+    per_page = 200
+
+    while True:
+        response = _request('GET', f'/deviations?page={page}&per_page={per_page}', access_token=access_token)
+        _raise_for_error(response)
+        payload = response.json()
+
+        if isinstance(payload, list):
+            return payload
+
+        rows.extend(payload.get('items', []))
+        if page >= payload.get('pages', 1):
+            return rows
+        page += 1
 
 
 def create_deviation(access_token, payload):
-    try:
-        response = requests.post(
-            f'{_base_url()}/deviations',
-            json=payload,
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('POST', '/deviations', access_token=access_token, json=payload)
     _raise_for_error(response)
     return response.json()
 
 
 def get_deviation(access_token, deviation_id):
-    try:
-        response = requests.get(
-            f'{_base_url()}/deviations/{deviation_id}',
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('GET', f'/deviations/{deviation_id}', access_token=access_token)
     _raise_for_error(response)
     return response.json()
 
@@ -292,26 +259,36 @@ def list_deviation_audits(access_token, deviation_id):
 
 
 def update_deviation(access_token, deviation_id, payload):
-    try:
-        response = requests.patch(
-            f'{_base_url()}/deviations/{deviation_id}',
-            json=payload,
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('PATCH', f'/deviations/{deviation_id}', access_token=access_token, json=payload)
     _raise_for_error(response)
     return response.json()
 
 
 def delete_deviation(access_token, deviation_id):
-    try:
-        response = requests.delete(
-            f'{_base_url()}/deviations/{deviation_id}',
-            headers=_auth_headers(access_token),
-            timeout=10,
-        )
-    except RequestException as error:
-        raise BackendAPIError(f'Could not reach backend API: {error}') from error
+    response = _request('DELETE', f'/deviations/{deviation_id}', access_token=access_token)
     _raise_for_error(response)
+
+
+# Notification API
+def list_notifications(access_token):
+    response = _request('GET', '/notifications', access_token=access_token)
+    _raise_for_error(response)
+    return response.json()
+
+
+def unread_notification_count(access_token):
+    response = _request('GET', '/notifications/unread-count', access_token=access_token)
+    _raise_for_error(response)
+    return response.json().get('unread', 0)
+
+
+def mark_notification_read(access_token, notification_id):
+    response = _request('PATCH', f'/notifications/{notification_id}/read', access_token=access_token)
+    _raise_for_error(response)
+    return response.json()
+
+
+def mark_all_notifications_read(access_token):
+    response = _request('PATCH', '/notifications/read-all', access_token=access_token)
+    _raise_for_error(response)
+    return response.json()

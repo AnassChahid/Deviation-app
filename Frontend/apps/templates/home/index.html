@@ -1,231 +1,1373 @@
-﻿{% extends "layouts/base.html" %}
+{% extends "layouts/base.html" %}
 
-{% block title %} Index {% endblock %}
+{% block title %} Dashboard {% endblock %}
 
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-{% block content %}
-{% macro bar_chart(title, rows, icon) %}
-    <div class="card app-panel app-chart-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5><i class="feather {{ icon }}"></i>{{ title }}</h5>
-        </div>
-        <div class="card-body">
-            <div class="app-chart-list">
-                {% for row in rows %}
-                    <div class="app-chart-row">
-                        <div class="app-chart-row-head">
-                            <span>{{ row.label }}</span>
-                            <strong>{{ row.count }}</strong>
-                        </div>
-                        <div class="app-chart-track">
-                            <span style="width: {{ row.percent }}%"></span>
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="app-empty app-empty-compact">
-                        <i class="feather icon-bar-chart-2"></i>
-                        <span>No data yet</span>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+<style>
+/* ─── Reset & Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Design Tokens ────────────────────────────────────────────────── */
+:root {
+    --orange:        #f05a28;
+    --orange-mid:    #f5926a;
+    --orange-light:  #fff4ef;
+    --orange-dim:    rgba(240,90,40,.12);
+    --blue:          #2c7be5;
+    --blue-light:    #e8f1fd;
+    --teal:          #12b76a;
+    --teal-light:    #d1fadf;
+    --red:           #e24b4a;
+    --red-light:     #fef3f2;
+    --amber:         #f79009;
+    --amber-light:   #fffaeb;
+    --purple:        #7f77dd;
+    --purple-light:  #eeedfe;
+    --surface:       #ffffff;
+    --bg:            #f7f8fb;
+    --border:        #eaedf2;
+    --border-strong: #d5d9e2;
+    --text:          #0f1117;
+    --text-2:        #4b5563;
+    --text-3:        #9ba3af;
+    --font-sans:     'DM Sans', sans-serif;
+    --font-mono:     'DM Mono', monospace;
+    --radius-sm:     8px;
+    --radius-md:     12px;
+    --radius-lg:     18px;
+    --shadow-sm:     0 1px 3px rgba(15,17,23,.06), 0 1px 2px rgba(15,17,23,.04);
+    --shadow-md:     0 4px 16px rgba(15,17,23,.07), 0 1px 4px rgba(15,17,23,.04);
+}
+
+/* ─── Layout ───────────────────────────────────────────────────────── */
+.app-db {
+    font-family: var(--font-sans);
+    padding: 0 28px 40px;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text);
+}
+
+/* ─── Header ───────────────────────────────────────────────────────── */
+.app-db-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 26px;
+}
+
+.app-db-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--orange);
+    margin-bottom: 6px;
+}
+
+.app-db-kicker::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--orange);
+    border-radius: 50%;
+}
+
+.app-db-title {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -.02em;
+    line-height: 1.2;
+}
+
+.app-db-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .18s ease;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+}
+
+.app-btn:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+    background: var(--orange-light);
+}
+
+.app-btn svg { flex-shrink: 0; }
+
+/* ─── Filters ──────────────────────────────────────────────────────── */
+.app-filters {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(110px, 1fr));
+    gap: 12px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 22px;
+    box-shadow: var(--shadow-sm);
+}
+
+.app-filters label span {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.app-filters .form-control,
+.app-filters select {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+    transition: border-color .15s;
+}
+
+.app-filters .form-control:focus,
+.app-filters select:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px var(--orange-dim);
+}
+
+.app-filters .btn-outline-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 12px;
+    margin-top: 19px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all .15s;
+}
+
+.app-filters .btn-outline-primary:hover {
+    background: var(--orange-light);
+    border-color: var(--orange);
+    color: var(--orange);
+}
+
+/* ─── KPIs ─────────────────────────────────────────────────────────── */
+.app-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.app-kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow .2s;
+}
+
+.app-kpi:hover { box-shadow: var(--shadow-md); }
+
+.app-kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--kpi-accent, var(--border));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.app-kpi[data-accent="orange"] { --kpi-accent: var(--orange); }
+.app-kpi[data-accent="red"]    { --kpi-accent: var(--red); }
+.app-kpi[data-accent="teal"]   { --kpi-accent: var(--teal); }
+.app-kpi[data-accent="blue"]   { --kpi-accent: var(--blue); }
+
+.app-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-3);
+    margin-bottom: 8px;
+}
+
+.app-kpi-value {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -.03em;
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.app-kpi[data-accent="orange"] .app-kpi-value { color: var(--orange); }
+.app-kpi[data-accent="red"]    .app-kpi-value { color: var(--red); }
+.app-kpi[data-accent="teal"]   .app-kpi-value { color: var(--teal); }
+.app-kpi[data-accent="blue"]   .app-kpi-value { color: var(--blue); }
+
+.app-kpi-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 6px;
+}
+
+/* ─── Section Label ────────────────────────────────────────────────── */
+.app-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-3);
+    margin: 24px 0 12px;
+}
+
+/* ─── Grids ────────────────────────────────────────────────────────── */
+.app-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.app-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+/* ─── Panel ────────────────────────────────────────────────────────── */
+.app-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .2s;
+}
+
+.app-panel:hover { box-shadow: var(--shadow-md); }
+
+.app-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.app-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -.01em;
+}
+
+.app-panel-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-3);
+    background: var(--bg);
+    padding: 3px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+}
+
+/* ─── Pie Charts ───────────────────────────────────────────────────── */
+.app-pie-wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.app-pie-canvas-wrap {
+    position: relative;
+    width: 128px;
+    height: 128px;
+    flex-shrink: 0;
+}
+
+.app-pie-canvas-wrap canvas {
+    position: absolute;
+    top: 0; left: 0;
+    cursor: crosshair;
+}
+
+.app-pie-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.app-pie-center-num {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.app-pie-center-lbl {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-3);
+    margin-top: 3px;
+}
+
+.app-pie-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.app-pie-leg-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 7px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.app-pie-leg-item:hover { background: var(--orange-light); }
+
+.app-pie-leg-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.app-pie-leg-name {
+    flex: 1;
+    font-size: 11px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-pie-leg-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.app-pie-leg-pct {
+    font-size: 10px;
+    color: var(--text-3);
+    min-width: 28px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Tooltip ──────────────────────────────────────────────────────── */
+.app-tooltip {
+    position: fixed;
+    background: var(--text);
+    color: var(--surface);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 9999;
+    max-width: min(320px, calc(100vw - 24px));
+    white-space: normal;
+    line-height: 1.35;
+    box-shadow: var(--shadow-md);
+}
+
+/* ─── Ranked Bars (Pareto) ─────────────────────────────────────────── */
+.app-bar-list { display: flex; flex-direction: column; gap: 10px; }
+
+.app-bar-row { display: flex; align-items: center; gap: 10px; }
+
+.app-bar-rank {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    min-width: 16px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.app-bar-label {
+    font-size: 11px;
+    color: var(--text-2);
+    min-width: 88px;
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-bar-track {
+    flex: 1;
+    height: 22px;
+    background: var(--bg);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.app-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 7px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,.95);
+    min-width: 28px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+    font-variant-numeric: tabular-nums;
+}
+
+.app-bar-pct {
+    font-size: 10px;
+    color: var(--text-3);
+    min-width: 30px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Cross-Analysis Charts ────────────────────────────────────────── */
+.app-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.app-chart-leg-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.app-chart-leg-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* ─── Pivot Table ──────────────────────────────────────────────────── */
+.app-pivot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.app-pivot-table th {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-3);
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    background: var(--bg);
+}
+
+.app-pivot-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.app-pivot-table tr:last-child td { border-bottom: none; }
+
+.app-pivot-table td:first-child { font-weight: 600; color: var(--text); }
+.app-pivot-table td:last-child  { font-weight: 600; color: var(--text); }
+
+.app-pivot-table tbody tr:hover td { background: var(--orange-light); }
+
+/* ─── Records Table ────────────────────────────────────────────────── */
+.app-records-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.app-records-table th {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-3);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    background: var(--bg);
+}
+
+.app-records-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: middle;
+}
+
+.app-records-table tbody tr:last-child td { border-bottom: none; }
+.app-records-table tbody tr:hover td { background: var(--bg); }
+.app-records-table tbody tr.is-overdue td { background: #fff8f6; }
+.app-records-table tbody tr.is-overdue:hover td { background: var(--orange-light); }
+
+.app-records-table td a {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.app-records-table td a:hover { text-decoration: underline; }
+
+/* Pagination */
+.app-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-top: 14px;
+    flex-wrap: wrap;
+}
+
+.app-pagination-summary {
+    color: var(--text-3);
+    font-size: 12px;
+}
+
+.app-pagination-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.app-page-link,
+.app-page-current {
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.app-page-link {
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    text-decoration: none;
+    background: var(--panel);
+}
+
+.app-page-link:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+}
+
+.app-page-current {
+    background: var(--orange);
+    color: #fff;
+}
+
+/* ─── Status Badges ────────────────────────────────────────────────── */
+.app-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+}
+
+.app-badge::before {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .8;
+}
+
+.app-badge-open    { background: var(--blue-light);   color: var(--blue); }
+.app-badge-done    { background: var(--teal-light);   color: var(--teal); }
+.app-badge-overdue { background: var(--red-light);    color: var(--red); }
+.app-badge-pending { background: var(--amber-light);  color: var(--amber); }
+
+/* ─── Empty State ──────────────────────────────────────────────────── */
+.app-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12px;
+    background: var(--bg);
+    border-radius: var(--radius-md);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+    .app-filters   { grid-template-columns: repeat(4, 1fr); }
+    .app-grid-3    { grid-template-columns: 1fr; }
+    .app-grid-2    { grid-template-columns: 1fr; }
+    .app-kpis      { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .app-kpis      { grid-template-columns: 1fr 1fr; }
+    .app-db-header { flex-direction: column; gap: 12px; }
+    .app-db        { padding: 0 16px 16px; }
+}
+
+/* ─── Print ─────────────────────────────────────────────────────────── */
+@media print {
+    /* ── Force colors ── */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Hide ALL navigation/chrome ── */
+    .pcoded-navbar,
+    .pcoded-header,
+    .navbar,
+    .navbar-wrapper,
+    nav,
+    aside,
+    [class*="sidebar"],
+    [class*="sidenav"],
+    .app-db-actions,
+    .app-filters,
+    .app-btn,
+    button {
+        display: none !important;
+    }
+
+    /* ── Reset layout containers injected by the theme ── */
+    .pcoded-main-container,
+    .pcoded-wrapper,
+    .pcoded-content,
+    .pcoded-inner-content,
+    .main-body,
+    .page-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        float: none !important;
+        position: static !important;
+        display: block !important;
+    }
+
+    /* ── Dashboard container ── */
+    .app-db {
+        padding: 12px !important;
+        background: #fff !important;
+    }
+
+    /* ── Maintain grid in print ── */
+    .app-grid-3 {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .app-grid-2 {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .app-kpis {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    /* ── Panels ── */
+    .app-panel,
+    .app-kpi {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* ── Charts: Chart.js canvases MUST have explicit pixel size ── */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* ── Links ── */
+    a { color: #111 !important; text-decoration: none !important; }
+}
+</style>
+{% endblock stylesheets %}
+
+{# ─── Macros ──────────────────────────────────────────────────────────── #}
+
+{% macro filter_select(name, label, options, selected, value_key=None, label_key=None) %}
+<label>
+    <span>{{ label }}</span>
+    <select class="form-control" name="{{ name }}" data-auto-filter>
+        <option value="">All</option>
+        {% for option in options %}
+            {% set value = option[value_key] if value_key else option %}
+            {% set text  = option[label_key] if label_key else option %}
+            <option value="{{ value }}" {% if selected|string == value|string %}selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+    </select>
+</label>
 {% endmacro %}
 
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper app-dashboard">
-                            {% with messages = get_flashed_messages(with_categories=true) %}
-                                {% if messages %}
-                                    {% for category, message in messages %}
-                                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                            {% endwith %}
+{# ── Pie chart macro ── #}
+{% macro pie_chart(title, pie, chart_id) %}
+<section class="app-panel">
+    <div class="app-panel-head">
+        <h2 class="app-panel-title">{{ title }}</h2>
+        <span class="app-panel-badge">{{ pie.total }} total</span>
+    </div>
 
-                            <section class="app-hero">
-                                <div class="app-hero-copy">
-                                    <span class="app-kicker">APM Terminals operations</span>
-                                    <h1>Deviation control center</h1>
-                                    <p>Monitor terminal quality events, shift follow-up, and operational exceptions from one focused workspace.</p>
-                                </div>
-                                <div class="app-hero-actions">
-                                    <a class="btn btn-primary" href="{{ url_for('home_blueprint.deviation_create') }}">
-                                        <i class="feather icon-plus"></i>
-                                        New Deviation
-                                    </a>
-                                    <a class="btn btn-outline-primary" href="{{ url_for('home_blueprint.deviations') }}">
-                                        <i class="feather icon-list"></i>
-                                        View List
-                                    </a>
-                                </div>
-                                <div class="app-hero-brand" aria-hidden="true">
-                                    <img src="{{ config.ASSETS_ROOT }}/images/apm-logo-dark.png" alt="">
-                                </div>
-                            </section>
+    {% if pie.rows %}
+    <div class="app-pie-wrap">
+        <div class="app-pie-canvas-wrap">
+            <canvas id="{{ chart_id }}"
+                    width="128" height="128"
+                    role="img"
+                    aria-label="{{ title }} donut chart. {% for row in pie.rows %}{{ row.label }}: {{ row.count }}. {% endfor %}">
+                {{ pie.rows | map(attribute='label') | join(', ') }}
+            </canvas>
+            <div class="app-pie-center">
+                <div class="app-pie-center-num">{{ pie.total }}</div>
+                <div class="app-pie-center-lbl">total</div>
+            </div>
+        </div>
 
-                            <div class="row app-stat-row">
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat">
-                                        <span class="app-stat-icon"><i class="feather icon-file-text"></i></span>
-                                        <span class="app-stat-label">Total deviations</span>
-                                        <strong>{{ stats.total }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat app-stat-warning">
-                                        <span class="app-stat-icon"><i class="feather icon-folder"></i></span>
-                                        <span class="app-stat-label">Open</span>
-                                        <strong>{{ stats.open }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat app-stat-danger">
-                                        <span class="app-stat-icon"><i class="feather icon-alert-triangle"></i></span>
-                                        <span class="app-stat-label">Overdue</span>
-                                        <strong>{{ stats.overdue }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat app-stat-success">
-                                        <span class="app-stat-icon"><i class="feather icon-check"></i></span>
-                                        <span class="app-stat-label">Done</span>
-                                        <strong>{{ stats.done }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat app-stat-warning">
-                                        <span class="app-stat-icon"><i class="feather icon-clock"></i></span>
-                                        <span class="app-stat-label">On going</span>
-                                        <strong>{{ stats.ongoing }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-xl-2 col-md-4 col-sm-6">
-                                    <div class="app-stat app-stat-danger">
-                                        <span class="app-stat-icon"><i class="feather icon-alert-circle"></i></span>
-                                        <span class="app-stat-label">Not yet</span>
-                                        <strong>{{ stats.not_yet }}</strong>
-                                    </div>
-                                </div>
+        <div class="app-pie-legend">
+            {% for row in pie.rows %}
+            <div class="app-pie-leg-item"
+                 data-pie-legend="{{ chart_id }}"
+                 data-idx="{{ loop.index0 }}"
+                 title="{{ row.label }}: {{ row.count }} ({{ ((row.count / pie.total) * 100) | round(1) }}%)">
+                <i class="app-pie-leg-dot" style="background: {{ row.color }}"></i>
+                <span class="app-pie-leg-name">{{ row.label }}</span>
+                <strong class="app-pie-leg-count">{{ row.count }}</strong>
+                <span class="app-pie-leg-pct">{{ ((row.count / pie.total) * 100) | round(1) }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="app-empty">No data available</div>
+    {% endif %}
+</section>
+{% endmacro %}
+
+{# ── Ranked bar (Pareto) macro ── #}
+{# ── Cross-analysis chart macro (grouped horizontal bar via Chart.js) ── #}
+{% macro cross_chart(title, cross, chart_id) %}
+<section class="app-panel">
+    <div class="app-panel-head">
+        <h2 class="app-panel-title">{{ title }}</h2>
+        <span class="app-panel-badge">Grouped</span>
+    </div>
+
+    <div class="app-chart-legend">
+        {% for ds in cross.datasets %}
+        <span class="app-chart-leg-item">
+            <span class="app-chart-leg-swatch" style="background: {{ ds.color }}"></span>
+            {{ ds.label }}
+        </span>
+        {% endfor %}
+    </div>
+
+    {% set bar_h = [cross.labels | length * 44 + 60, 220] | max %}
+    <div style="position: relative; width: 100%; height: {{ bar_h }}px;">
+        <canvas id="{{ chart_id }}"
+                role="img"
+                aria-label="{{ title }} grouped bar chart.">
+        </canvas>
+    </div>
+
+    {# Embed data for JS to pick up #}
+    <script type="application/json" data-cross-chart="{{ chart_id }}">
+    {
+        "labels": {{ cross.labels | tojson }},
+        "datasets": [
+            {% for ds in cross.datasets %}
+            {
+                "label": {{ ds.label | tojson }},
+                "data":  {{ ds.data | tojson }},
+                "color": {{ ds.color | tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }
+    </script>
+</section>
+{% endmacro %}
+
+{# ── Pivot table macro ── #}
+{% macro pivot_table(title, pivot) %}
+<section class="app-panel">
+    <div class="app-panel-head">
+        <h2 class="app-panel-title">{{ title }}</h2>
+        <span class="app-panel-badge">By total</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="app-pivot-table">
+            <thead>
+                <tr>
+                    <th>{{ pivot.row_heading }}</th>
+                    {% for col in pivot.columns %}<th>{{ col }}</th>{% endfor %}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in pivot.rows %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    {% for count in row.counts %}<td>{{ count }}</td>{% endfor %}
+                    <td>{{ row.total }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{{ pivot.columns | length + 2 }}">No data</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endmacro %}
+
+{# ─── Page Content ──────────────────────────────────────────────────────── #}
+{% block content %}
+<div class="pcoded-main-container mt-4">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper app-db">
+
+                        {# Flash messages #}
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        {# ── Header ── #}
+                        <div class="app-db-header">
+                            <div>
+                                <div class="app-db-kicker">Operations report</div>
+                                <h1 class="app-db-title">Deviation analysis</h1>
                             </div>
-
-                            <div class="row">
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By status', chart_data.status, 'icon-activity') }}
-                                </div>
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By area', chart_data.area, 'icon-map-pin') }}
-                                </div>
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By shift', chart_data.shift, 'icon-clock') }}
-                                </div>
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By QC', chart_data.qc, 'icon-user-check') }}
-                                </div>
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By vessel', chart_data.vessel, 'icon-anchor') }}
-                                </div>
-                                <div class="col-xl-4 col-md-6">
-                                    {{ bar_chart('By deviation type', chart_data.deviation_type, 'icon-tag') }}
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-xl-4 col-lg-6">
-                                    <div class="card app-panel">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h5>Overdue deviations</h5>
-                                            <span class="app-panel-note">{{ overdue_after_days }}+ days open</span>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="app-activity-list">
-                                                {% for deviation in overdue_deviations %}
-                                                    <a class="app-activity app-activity-danger" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
-                                                        <span class="app-activity-mark"></span>
-                                                        <span>
-                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
-                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | {{ deviation.area|default('Yard') }}</small>
-                                                            <small>{{ qc_map.get(deviation.qc_id, deviation.qc_id) }}</small>
-                                                        </span>
-                                                        <em>{{ deviation.status|default('') }}</em>
-                                                    </a>
-                                                {% else %}
-                                                    <div class="app-empty">
-                                                        <i class="feather icon-check-circle"></i>
-                                                        <span>No overdue deviations</span>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-4 col-lg-6">
-                                    <div class="card app-panel">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h5>Open deviations</h5>
-                                            <a class="app-link" href="{{ url_for('home_blueprint.deviations') }}">Open all</a>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="app-activity-list">
-                                                {% for deviation in open_deviations %}
-                                                    <a class="app-activity" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
-                                                        <span class="app-activity-mark"></span>
-                                                        <span>
-                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
-                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | {{ deviation.area|default('Yard') }}</small>
-                                                            <small>{{ vessel_map.get((deviation.vessel_ids|default([])|first), 'No vessel') }}</small>
-                                                        </span>
-                                                        <em>{{ deviation.status|default('') }}</em>
-                                                    </a>
-                                                {% else %}
-                                                    <div class="app-empty">
-                                                        <i class="feather icon-check-circle"></i>
-                                                        <span>No open deviations</span>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-4 col-lg-12">
-                                    <div class="card app-panel">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h5>Recent deviations</h5>
-                                            <a class="app-link" href="{{ url_for('home_blueprint.deviations') }}">Open all</a>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="app-activity-list">
-                                                {% for deviation in latest_deviations %}
-                                                    <a class="app-activity" href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
-                                                        <span class="app-activity-mark"></span>
-                                                        <span>
-                                                            <strong>{{ deviation_type_map.get(deviation.deviation_type_id, 'Deviation') }}</strong>
-                                                            <small>{{ deviation.date }} | {{ deviation.shiftType }} | TS {{ deviation.ts }}</small>
-                                                        </span>
-                                                        <em>{{ deviation.status|default('') }}</em>
-                                                    </a>
-                                                {% else %}
-                                                    <div class="app-empty">
-                                                        <i class="feather icon-inbox"></i>
-                                                        <span>No deviations recorded yet</span>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="app-db-actions">
+                                <button class="app-btn" type="button" data-dashboard-export>
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                                        <path d="M8 2v8M4 7l4 4 4-4M2 13h12"/>
+                                    </svg>
+                                    Export CSV
+                                </button>
+                                <button class="app-btn" type="button" onclick="doPrint()">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                                        <rect x="2" y="5" width="12" height="8" rx="1"/>
+                                        <path d="M5 5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 11h6"/>
+                                    </svg>
+                                    Print
+                                </button>
                             </div>
                         </div>
-                    </div>
+
+                        {# ── Filters ── #}
+                        <form class="app-filters"
+                              method="get"
+                              action="{{ url_for('home_blueprint.index') }}"
+                              data-report-filters>
+
+                            <label>
+                                <span>From</span>
+                                <input class="form-control" type="date"
+                                       name="date_from"
+                                       value="{{ selected_filters.date_from }}"
+                                       data-auto-filter>
+                            </label>
+
+                            <label>
+                                <span>To</span>
+                                <input class="form-control" type="date"
+                                       name="date_to"
+                                       value="{{ selected_filters.date_to }}"
+                                       data-auto-filter>
+                            </label>
+
+                            {{ filter_select('vessel_id',        'Vessel',  filter_options.vessels,        selected_filters.vessel_id,        'id', 'name') }}
+                            {{ filter_select('area',             'Area',    filter_options.areas,           selected_filters.area) }}
+                            {{ filter_select('deviation_type_id','Type',    filter_options.deviation_types, selected_filters.deviation_type_id,'id', 'name') }}
+                            {{ filter_select('status',           'Status',  filter_options.statuses,        selected_filters.status) }}
+                            {{ filter_select('shift',            'Shift',   filter_options.shifts,          selected_filters.shift) }}
+
+                            <a class="btn-outline-primary" href="{{ url_for('home_blueprint.index') }}">Reset</a>
+                        </form>
+
+                        {# ── KPIs ── #}
+                        <div class="app-kpis">
+                            <div class="app-kpi" data-accent="blue">
+                                <div class="app-kpi-label">Total</div>
+                                <div class="app-kpi-value">{{ stats.total }}</div>
+                                <div class="app-kpi-sub">All deviations</div>
+                            </div>
+                            <div class="app-kpi" data-accent="orange">
+                                <div class="app-kpi-label">Open</div>
+                                <div class="app-kpi-value">{{ stats.open }}</div>
+                                <div class="app-kpi-sub">Pending resolution</div>
+                            </div>
+                            <div class="app-kpi" data-accent="red">
+                                <div class="app-kpi-label">Overdue</div>
+                                <div class="app-kpi-value">{{ stats.overdue }}</div>
+                                <div class="app-kpi-sub">Past due date</div>
+                            </div>
+                            <div class="app-kpi" data-accent="teal">
+                                <div class="app-kpi-label">Done</div>
+                                <div class="app-kpi-value">{{ stats.done }}</div>
+                                <div class="app-kpi-sub">Resolved</div>
+                            </div>
+                        </div>
+
+                        {# ── Pie Charts ── #}
+                        <p class="app-section-label">Distribution breakdown</p>
+                        <div class="app-grid-3">
+                            {{ pie_chart('Status split',         pie_data.status,         'pie-status') }}
+                            {{ pie_chart('Area split',           pie_data.area,           'pie-area') }}
+                            {{ pie_chart('Deviation type split', pie_data.deviation_type, 'pie-type') }}
+                        </div>
+
+                        {# ── Cross-Analysis ── #}
+                        <p class="app-section-label">Cross-analysis</p>
+                        <div class="app-grid-2">
+                            {{ cross_chart('Deviations by shift & area',     cross_data.shift_area,   'cross-shift-area') }}
+                            {{ cross_chart('Deviations by vessel & status',  cross_data.vessel_status,'cross-vessel-status') }}
+                        </div>
+
+                        {# ── Pivot Tables ── #}
+                        <p class="app-section-label">Pivot tables</p>
+                        <div class="app-grid-2">
+                            {{ pivot_table('Area by deviation type', pivot_data.area_type) }}
+                            {{ pivot_table('Shift by area',          pivot_data.shift_area) }}
+                        </div>
+                        <!-- <div class="app-grid-2">
+                            {{ pivot_table('Shift by status',        pivot_data.shift_status) }}
+                        </div> -->
+
+                        {# ── Records Table ── #}
+                        <p class="app-section-label">Deviation records</p>
+                        <section class="app-panel">
+                            <div class="app-panel-head">
+                                <h2 class="app-panel-title">All records</h2>
+                                <span class="app-panel-badge">
+                                    {{ pagination.start_item }}-{{ pagination.end_item }} of {{ pagination.total }}
+                                </span>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="app-records-table" data-dashboard-table>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Vessel</th>
+                                            <th>Area</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Shift</th>
+                                            <th>QC</th>
+                                            <th>Days open</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for deviation in latest_deviations %}
+                                        <tr class="{% if deviation.is_overdue %}is-overdue{% endif %}">
+                                            <td>
+                                                <a href="{{ url_for('home_blueprint.deviation_detail', deviation_id=deviation.id) }}">
+                                                    {{ deviation.date }}
+                                                </a>
+                                            </td>
+                                            <td>{{ deviation.vessel_names | join(', ') if deviation.vessel_names else 'No vessel' }}</td>
+                                            <td>{{ deviation.area | default('Unknown') }}</td>
+                                            <td>{{ deviation.deviation_type_name }}</td>
+                                            <td>
+                                                {% set s = deviation.status | default('Unknown') | lower %}
+                                                {% if s == 'open' %}
+                                                    <span class="app-badge app-badge-open">Open</span>
+                                                {% elif s == 'done' or s == 'closed' %}
+                                                    <span class="app-badge app-badge-done">Done</span>
+                                                {% elif s == 'overdue' %}
+                                                    <span class="app-badge app-badge-overdue">Overdue</span>
+                                                {% else %}
+                                                    <span class="app-badge app-badge-pending">{{ deviation.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ deviation.shiftType | default('Unknown') }}</td>
+                                            <td>{{ deviation.qc_name }}</td>
+                                            <td>{{ deviation.days_open if deviation.days_open is not none else '—' }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="8" style="text-align:center;color:var(--text-3);padding:24px;">
+                                                No deviations match the current filters.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {% if pagination.pages > 1 %}
+                            <nav class="app-pagination" aria-label="Records pagination">
+                                <div class="app-pagination-summary">
+                                    Page {{ pagination.page }} of {{ pagination.pages }}
+                                </div>
+                                <div class="app-pagination-links">
+                                    {% if pagination.prev_url %}
+                                    <a class="app-page-link" href="{{ pagination.prev_url }}">Prev</a>
+                                    {% endif %}
+                                    {% for link in pagination.page_links %}
+                                        {% if link.is_current %}
+                                        <span class="app-page-current">{{ link.number }}</span>
+                                        {% else %}
+                                        <a class="app-page-link" href="{{ link.url }}">{{ link.number }}</a>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if pagination.next_url %}
+                                    <a class="app-page-link" href="{{ pagination.next_url }}">Next</a>
+                                    {% endif %}
+                                </div>
+                            </nav>
+                            {% endif %}
+                        </section>
+
+                    </div>{# /page-wrapper #}
                 </div>
             </div>
         </div>
     </div>
+</div>
 
+{# Global hover tooltip #}
+<div class="app-tooltip" id="app-tooltip"></div>
 {% endblock content %}
 
-{% block javascripts %}{% endblock javascripts %}
+{# ─── Scripts ───────────────────────────────────────────────────────────── #}
+{% block javascripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ────────────────────────────────────────────────────────────────────────
+   COLOUR PALETTE  (matches Jinja side)
+   ─────────────────────────────────────────────────────────────────────── */
+const COLORS = [
+    '#f05a28','#2c7be5','#12b76a','#7f77dd',
+    '#f79009','#e24b4a','#5dcaa5','#d85a30'
+];
+
+/* ────────────────────────────────────────────────────────────────────────
+   TOOLTIP HELPER
+   ─────────────────────────────────────────────────────────────────────── */
+const tooltip = document.getElementById('app-tooltip');
+
+function showTooltip(e, text) {
+    tooltip.textContent = text;
+    tooltip.style.opacity = '1';
+    positionTooltip(e);
+}
+
+function positionTooltip(e) {
+    const margin = 12;
+    const preferredLeft = e.clientX + 14;
+    const preferredTop = e.clientY - 32;
+    const maxLeft = window.innerWidth - tooltip.offsetWidth - margin;
+    const maxTop = window.innerHeight - tooltip.offsetHeight - margin;
+
+    tooltip.style.left = Math.max(margin, Math.min(preferredLeft, maxLeft)) + 'px';
+    tooltip.style.top = Math.max(margin, Math.min(preferredTop, maxTop)) + 'px';
+}
+
+function hideTooltip() {
+    tooltip.style.opacity = '0';
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   PIE / DONUT CHARTS
+   ─────────────────────────────────────────────────────────────────────── */
+(function initPies() {
+    // Gather all pie legend items to attach hover tooltips + Chart.js instances
+    const pieCharts = {}; // keyed by chart_id
+
+    // Build Chart.js instances for every canvas that looks like a pie
+    document.querySelectorAll('[data-pie-legend]').forEach(function(item) {
+        const chartId = item.getAttribute('data-pie-legend');
+        const idx     = parseInt(item.getAttribute('data-idx'), 10);
+        const canvas  = document.getElementById(chartId);
+        if (!canvas || !canvas.__pieChart) return; // chart not ready yet — handled below
+
+        const chart = canvas.__pieChart;
+        const ds    = chart.data.datasets[0];
+        const total = ds.data.reduce((a, b) => a + b, 0);
+        const label = chart.data.labels[idx];
+        const count = ds.data[idx];
+        const pct   = total ? Math.round(count / total * 100) : 0;
+
+        item.addEventListener('mouseenter', function(e) { showTooltip(e, label + ': ' + count + ' (' + pct + '%)'); });
+        item.addEventListener('mousemove',  positionTooltip);
+        item.addEventListener('mouseleave', hideTooltip);
+    });
+
+    // Actually build the charts — we need to do this AFTER DOM is ready
+    document.querySelectorAll('canvas[id^="pie-"]').forEach(function(canvas) {
+        // Collect labels + data from sibling legend items
+        const legend = document.querySelectorAll('[data-pie-legend="' + canvas.id + '"]');
+        if (!legend.length) return;
+
+        const labels = [], data = [], colors = [];
+        legend.forEach(function(item) {
+            labels.push(item.querySelector('.app-pie-leg-name').textContent.trim());
+            data.push(parseInt(item.querySelector('.app-pie-leg-count').textContent.trim(), 10));
+            colors.push(item.querySelector('.app-pie-leg-dot').style.background);
+        });
+
+        const total = data.reduce((a, b) => a + b, 0);
+
+        const chart = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 3,
+                    borderColor: '#ffffff',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
+
+        canvas.__pieChart = chart;
+
+        canvas.addEventListener('mousemove', function(e) {
+            const points = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+            if (!points.length) {
+                hideTooltip();
+                return;
+            }
+
+            const idx = points[0].index;
+            const count = data[idx];
+            const pct = total ? Math.round(count / total * 100) : 0;
+            showTooltip(e, labels[idx] + ': ' + count + ' (' + pct + '%)');
+        });
+        canvas.addEventListener('mouseleave', hideTooltip);
+
+        // Now hook legend hover
+        legend.forEach(function(item) {
+            const idx   = parseInt(item.getAttribute('data-idx'), 10);
+            const count = data[idx];
+            const pct   = total ? Math.round(count / total * 100) : 0;
+            const label = labels[idx];
+
+            item.addEventListener('mouseenter', function(e) {
+                showTooltip(e, label + ': ' + count + ' (' + pct + '%)');
+                // Highlight the corresponding slice
+                chart.setDatasetVisibility(0, true);
+                chart.update('none');
+            });
+            item.addEventListener('mousemove', positionTooltip);
+            item.addEventListener('mouseleave', function() {
+                hideTooltip();
+                chart.update('none');
+            });
+        });
+    });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────
+   CROSS-ANALYSIS CHARTS  (grouped horizontal bar — Chart.js)
+   ─────────────────────────────────────────────────────────────────────── */
+(function initCrossCharts() {
+    document.querySelectorAll('[data-cross-chart]').forEach(function(scriptEl) {
+        const chartId = scriptEl.getAttribute('data-cross-chart');
+        const canvas  = document.getElementById(chartId);
+        if (!canvas) return;
+
+        let cfg;
+        try { cfg = JSON.parse(scriptEl.textContent); }
+        catch(e) { console.warn('cross chart parse error', e); return; }
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: cfg.labels,
+                datasets: cfg.datasets.map(function(ds) {
+                    return {
+                        label: ds.label,
+                        data:  ds.data,
+                        backgroundColor: ds.color,
+                        borderRadius: 4,
+                        borderSkipped: false
+                    };
+                })
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f1117',
+                        titleColor: '#fff',
+                        bodyColor:  '#ccc',
+                        padding: 10,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                        ticks: { font: { size: 10, family: "'DM Sans', sans-serif" }, color: '#9ba3af' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, family: "'DM Sans', sans-serif" }, color: '#4b5563' }
+                    }
+                }
+            }
+        });
+    });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────
+   AUTO-SUBMIT FILTERS
+   ─────────────────────────────────────────────────────────────────────── */
+(function initFilters() {
+    const form = document.querySelector('[data-report-filters]');
+    document.querySelectorAll('[data-auto-filter]').forEach(function(el) {
+        el.addEventListener('change', function() { if (form) form.submit(); });
+    });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────
+   CSV EXPORT
+   ─────────────────────────────────────────────────────────────────────── */
+document.querySelector('[data-dashboard-export]')?.addEventListener('click', function() {
+    const table = document.querySelector('[data-dashboard-table]');
+    if (!table) return;
+
+    const rows = Array.from(table.querySelectorAll('tr')).map(function(row) {
+        return Array.from(row.querySelectorAll('th, td')).map(function(cell) {
+            return '"' + cell.innerText.trim().replaceAll('"', '""') + '"';
+        }).join(',');
+    }).join('\n');
+
+    const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href     = URL.createObjectURL(blob);
+    link.download = 'deviation-report.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+});
+
+/* ────────────────────────────────────────────────────────────────────────
+   PRINT  — wait for charts to finish rendering before calling print()
+   ─────────────────────────────────────────────────────────────────────── */
+function doPrint() {
+    // Give Chart.js a tick to ensure all canvases are fully rendered
+    setTimeout(function() { window.print(); }, 300);
+}
+</script>
+{% endblock javascripts %}
