@@ -18,6 +18,8 @@
                                 {% endif %}
                             {% endwith %}
 
+                            {% set table_category_options = category_options|default(area_options|default(['Equipments', 'Flow', 'Planning', 'Yard', 'Human', 'Others'])) %}
+
                             <div class="app-page-heading">
                                 <div>
                                     <span class="app-kicker">Deviation log</span>
@@ -58,11 +60,11 @@
                                         </div>
                                         <div>
                                             <div class="form-group">
-                                                <label for="filterArea">Area</label>
-                                                <select id="filterArea" class="form-control custom-select">
-                                                    <option value="">All areas</option>
-                                                    {% for area in area_options %}
-                                                        <option value="{{ area|lower }}">{{ area }}</option>
+                                                    <label for="filterCategory">Category</label>
+                                                    <select id="filterCategory" class="form-control custom-select">
+                                                        <option value="">All categories</option>
+                                                    {% for category_label in table_category_options %}
+                                                        <option value="{{ category_label|lower }}">{{ category_label }}</option>
                                                     {% endfor %}
                                                 </select>
                                             </div>
@@ -133,7 +135,8 @@
                                                 <th>Date</th>
                                                 <th>Week</th>
                                                 <th>Shift</th>
-                                                <th>Area</th>
+                                                <th>Category</th>
+                                                <th>Duration</th>
                                                 <th>Vessel Name</th>
                                                 <th>Vessel Code</th>
                                                 <th>Deviation Type</th>
@@ -145,10 +148,10 @@
                                             </thead>
                                             <tbody>
                                             {% for deviation in deviations %}
-                                            <tr data-search="{{ (deviation.area|default('Yard') ~ ' ' ~ deviation.status|default('') ~ ' ' ~ deviation.description|default('') ~ ' ' ~ deviation.ts ~ ' ' ~ deviation.shiftType ~ ' ' ~ deviation_type_map.get(deviation.deviation_type_id, deviation.deviation_type_id) ~ ' ' ~ qc_map.get(deviation.qc_id, deviation.qc_id) ~ ' ' ~ deviation.creator_name|default(''))|lower }}"
+                                            <tr data-search="{{ (deviation.category|default('Yard') ~ ' ' ~ deviation.duration|default(0) ~ ' ' ~ deviation.status|default('') ~ ' ' ~ deviation.description|default('') ~ ' ' ~ deviation.ts ~ ' ' ~ deviation.shiftType ~ ' ' ~ deviation_type_map.get(deviation.deviation_type_id, deviation.deviation_type_id) ~ ' ' ~ qc_map.get(deviation.qc_id, deviation.qc_id) ~ ' ' ~ deviation.creator_name|default(''))|lower }}"
                                                 data-vessel-search="{% for vessel_id in deviation.vessel_ids|default([]) %}{{ vessel_search_map.get(vessel_id, vessel_id) }} {% endfor %}"
                                                 data-shift="{{ deviation.shiftType|lower }}"
-                                                data-area="{{ deviation.area|default('Yard')|lower }}"
+                                                data-category="{{ deviation.category|default('Yard')|lower }}"
                                                 data-status="{{ deviation.status|default('')|lower }}"
                                                 data-qc="{{ deviation.qc_id }}"
                                                 data-vessels="{{ deviation.vessel_ids|default([])|join(',') }}"
@@ -159,7 +162,8 @@
                                                 <td>{{ deviation.date }}</td>
                                                 <td>{{ deviation.ts }}</td>
                                                 <td><span class="app-chip app-chip-muted">{{ deviation.shiftType }}</span></td>
-                                                <td><span class="app-chip app-chip-muted">{{ deviation.area|default('Yard') }}</span></td>
+                                                <td><span class="app-chip app-chip-muted">{{ deviation.category|default('Yard') }}</span></td>
+                                                <td>{{ deviation.duration|default(0) }} min</td>
                                                 <td>
                                                     {% for vessel_id in deviation.vessel_ids|default([]) %}
                                                         <span class="app-chip app-chip-muted">{{ vessel_name_map.get(vessel_id, vessel_id) }}</span>
@@ -269,7 +273,7 @@
         const filters = {
             search: document.getElementById('filterSearch'),
             shift: document.getElementById('filterShift'),
-            area: document.getElementById('filterArea'),
+            category: document.getElementById('filterCategory'),
             status: document.getElementById('filterStatus'),
             qc: document.getElementById('filterQc'),
             vessel: document.getElementById('filterVessel'),
@@ -289,7 +293,7 @@
         function matches(row) {
             const search = filters.search.value.trim().toLowerCase();
             const shift = filters.shift.value.trim().toLowerCase();
-            const area = filters.area.value.trim().toLowerCase();
+            const category = filters.category.value.trim().toLowerCase();
             const status = filters.status.value.trim().toLowerCase();
             const qc = filters.qc.value;
             const vessel = filters.vessel.value;
@@ -301,7 +305,7 @@
 
             return (!search || searchable.includes(search)) &&
                 (!shift || row.dataset.shift === shift) &&
-                (!area || row.dataset.area === area) &&
+                (!category || row.dataset.category === category) &&
                 (!status || row.dataset.status === status) &&
                 (!qc || row.dataset.qc === qc) &&
                 (!vessel || rowVessels.includes(vessel)) &&
@@ -332,7 +336,7 @@
                 return;
             }
 
-            const headers = ['Date', 'TS', 'Shift', 'Area', 'Vessel Name', 'Vessel Code', 'Deviation Type', 'QC', 'Creator', 'Status'];
+            const headers = ['Date', 'TS', 'Shift', 'Category', 'Duration', 'Vessel Name', 'Vessel Code', 'Deviation Type', 'QC', 'Creator', 'Status'];
             const lines = [headers.map(csvEscape).join(',')];
             exportRows.forEach(row => {
                 const cells = Array.from(row.querySelectorAll('td')).slice(0, headers.length);

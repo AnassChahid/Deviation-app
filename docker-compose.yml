@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./Backend
+    container_name: deviation-backend
+    env_file:
+      - ./deploy/backend.env
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./Frontend
+    container_name: deviation-frontend
+    env_file:
+      - ./deploy/frontend.env
+    environment:
+      BACKEND_API_URL: http://backend:8001
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+    restart: unless-stopped

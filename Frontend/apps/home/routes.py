@@ -9,7 +9,7 @@ from flask import flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
 SHIFT_TYPES = ('Shift A', 'Shift B', 'Shift C', 'Shift D')
-AREA_TYPES = ('Yard', 'Quay Side', 'PMTT', 'Pinning', 'Lash', 'Vessel')
+CATEGORY_TYPES = ('Equipments', 'Flow', 'Planning', 'Yard', 'Human', 'Others')
 STATUS_TYPES = ('Done', 'On going', 'Not Yet')
 USER_ROLES = ('user', 'admin', 'superuser')
 OVERDUE_AFTER_DAYS = 7
@@ -93,7 +93,7 @@ def _selected_dashboard_filters():
         'date_from': request.args.get('date_from', '').strip(),
         'date_to': request.args.get('date_to', '').strip(),
         'vessel_id': request.args.get('vessel_id', '').strip(),
-        'area': request.args.get('area', '').strip(),
+        'category': (request.args.get('category') or request.args.get('area') or '').strip(),
         'deviation_type_id': request.args.get('deviation_type_id', '').strip(),
         'status': request.args.get('status', '').strip(),
         'shift': request.args.get('shift', '').strip(),
@@ -120,7 +120,7 @@ def _filter_dashboard_rows(rows, selected):
             continue
         if date_to and (not row_date or row_date > date_to):
             continue
-        if selected.get('area') and row.get('area') != selected['area']:
+        if selected.get('category') and row.get('category') != selected['category']:
             continue
         if selected.get('status') and row.get('status') != selected['status']:
             continue
@@ -143,7 +143,7 @@ def _filter_dashboard_rows(rows, selected):
 def _dashboard_datasets(rows, deviation_type_map, qc_map, vessel_map):
     total = len(rows)
     status_counter = Counter(row.get('status') or 'Unknown' for row in rows)
-    area_counter = Counter(row.get('area') or 'Unknown' for row in rows)
+    category_counter = Counter(row.get('category') or 'Unknown' for row in rows)
     shift_counter = Counter(row.get('shiftType') or 'Unknown' for row in rows)
     qc_counter = Counter(qc_map.get(row.get('qc_id'), row.get('qc_id') or 'Unknown') for row in rows)
     type_counter = Counter(
@@ -162,7 +162,7 @@ def _dashboard_datasets(rows, deviation_type_map, qc_map, vessel_map):
 
     return {
         'status': _chart_rows(status_counter, total),
-        'area': _chart_rows(area_counter, total),
+        'category': _chart_rows(category_counter, total),
         'shift': _chart_rows(shift_counter, total),
         'qc': _chart_rows(qc_counter, total),
         'vessel': _chart_rows(vessel_counter, max(sum(vessel_counter.values()), 1)),
@@ -222,6 +222,43 @@ def _dashboard_pareto(rows):
         })
 
     return {'total': total, 'rows': pareto_rows}
+
+
+def _duration_minutes(row) -> int:
+    try:
+        return max(int(row.get('duration') or 0), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _dashboard_duration_histogram(rows, label_getter):
+    counter = Counter()
+    for row in rows:
+        duration = _duration_minutes(row)
+        if duration:
+            counter[label_getter(row)] += duration
+
+    total = sum(counter.values())
+    if not total:
+        return {'total': 0, 'labels': [], 'durations': [], 'cumulative': []}
+
+    labels = []
+    durations = []
+    cumulative = []
+    running_total = 0
+
+    for label, duration in counter.most_common(10):
+        labels.append(label)
+        durations.append(round(duration / 60, 2))
+        running_total += duration
+        cumulative.append(round((running_total / total) * 100, 1))
+
+    return {
+        'total': round(total / 60, 2),
+        'labels': labels,
+        'durations': durations,
+        'cumulative': cumulative,
+    }
 
 
 def _dashboard_cross(rows, label_getter, group_getter):
@@ -403,54 +440,25 @@ def index():
         chart_data=chart_data,
         pie_data={
             'status': _dashboard_pie(chart_data['status']),
-            'area': _dashboard_pie(chart_data['area']),
+            'category': _dashboard_pie(chart_data['category']),
             'deviation_type': _dashboard_pie(chart_data['deviation_type']),
         },
-        pareto_data={
-            'deviation_type': _dashboard_pareto(chart_data['deviation_type']),
-            'vessel': _dashboard_pareto(chart_data['vessel']),
-            'area': _dashboard_pareto(chart_data['area']),
-        },
-        cross_data={
-            'shift_area': _dashboard_cross(
+        duration_histograms={
+            'deviation_type': _dashboard_duration_histogram(
                 rows,
-                lambda row: row.get('shiftType') or 'Unknown',
-                lambda row: row.get('area') or 'Unknown',
-            ),
-            'vessel_status': _dashboard_cross(
-                rows,
-                lambda row: (
-                    ', '.join(
-                        vessel_map.get(vessel_id, str(vessel_id))
-                        for vessel_id in (row.get('vessel_ids') or [])
-                    ) or 'No vessel'
+                lambda row: deviation_type_map.get(
+                    row.get('deviation_type_id'),
+                    row.get('deviation_type_id') or 'Unknown',
                 ),
-                lambda row: row.get('status') or 'Unknown',
             ),
-        },
-        pivot_data={
-            'shift_area': _dashboard_pivot(
+            'category': _dashboard_duration_histogram(
                 rows,
-                lambda row: row.get('shiftType') or 'Unknown',
-                lambda row: row.get('area') or 'Unknown',
-                'Shift',
-            ),
-            'area_type': _dashboard_pivot(
-                rows,
-                lambda row: row.get('area') or 'Unknown',
-                lambda row: deviation_type_map.get(row.get('deviation_type_id'), row.get('deviation_type_id') or 'Unknown'),
-                'Area',
-            ),
-            'shift_status': _dashboard_pivot(
-                rows,
-                lambda row: row.get('shiftType') or 'Unknown',
-                lambda row: row.get('status') or 'Unknown',
-                'Shift',
+                lambda row: row.get('category') or 'Unknown',
             ),
         },
         selected_filters=selected_filters,
         filter_options={
-            'areas': sorted({row.get('area') for row in all_rows if row.get('area')} | set(AREA_TYPES)),
+            'categories': sorted({row.get('category') for row in all_rows if row.get('category')} | set(CATEGORY_TYPES)),
             'statuses': sorted({row.get('status') for row in all_rows if row.get('status')} | set(STATUS_TYPES)),
             'shifts': sorted({row.get('shiftType') for row in all_rows if row.get('shiftType')} | set(SHIFT_TYPES)),
             'deviation_types': deviation_type_options,
@@ -511,7 +519,8 @@ def deviations():
         vessel_code_map=vessel_code_map,
         vessel_search_map=vessel_search_map,
         shift_options=SHIFT_TYPES,
-        area_options=AREA_TYPES,
+        category_options=CATEGORY_TYPES,
+        area_options=CATEGORY_TYPES,
         status_options=STATUS_TYPES,
     )
 
@@ -797,7 +806,8 @@ def deviation_create():
         payload = {
             'date': request.form.get('date'),
             'shiftType': request.form.get('shiftType'),
-            'area': request.form.get('area'),
+            'category': request.form.get('category'),
+            'duration': request.form.get('duration', type=int),
             'status': request.form.get('status'),
             'description': request.form.get('description'),
             'deviation_type_id': request.form.get('deviation_type_id', type=int),
@@ -819,7 +829,8 @@ def deviation_create():
         'home/deviation-create.html',
         segment='deviations',
         shift_options=SHIFT_TYPES,
-        area_options=AREA_TYPES,
+        category_options=CATEGORY_TYPES,
+        area_options=CATEGORY_TYPES,
         status_options=STATUS_TYPES,
         deviation_type_options=deviation_type_options,
         qc_options=qc_options,
@@ -888,7 +899,8 @@ def deviation_edit(deviation_id):
         payload = {
             'date': request.form.get('date'),
             'shiftType': request.form.get('shiftType'),
-            'area': request.form.get('area'),
+            'category': request.form.get('category'),
+            'duration': request.form.get('duration', type=int),
             'status': request.form.get('status'),
             'description': request.form.get('description'),
             'deviation_type_id': request.form.get('deviation_type_id', type=int),
@@ -911,7 +923,8 @@ def deviation_edit(deviation_id):
         segment='deviations',
         deviation=deviation,
         shift_options=SHIFT_TYPES,
-        area_options=AREA_TYPES,
+        category_options=CATEGORY_TYPES,
+        area_options=CATEGORY_TYPES,
         status_options=STATUS_TYPES,
         deviation_type_options=deviation_type_options,
         qc_options=qc_options,

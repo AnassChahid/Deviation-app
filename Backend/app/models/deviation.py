@@ -18,13 +18,13 @@ class DeviationShift(str, Enum):
     shift_d = "Shift D"
 
 
-class DeviationArea(str, Enum):
+class DeviationCategory(str, Enum):
+    equipments = "Equipments"
+    flow = "Flow"
+    planning = "Planning"
     yard = "Yard"
-    quay_side = "Quay Side"
-    pmtt = "PMTT"
-    pinning = "Pinning"
-    lash = "Lash"
-    vessel = "Vessel"
+    human = "Human"
+    others = "Others"
 
 
 class DeviationStatus(str, Enum):
@@ -47,11 +47,12 @@ class Deviation(Base):
         SqlEnum(DeviationShift, native_enum=False, values_callable=_enum_values),
         nullable=False,
     )
-    area: Mapped[DeviationArea] = mapped_column(
-        SqlEnum(DeviationArea, native_enum=False, values_callable=_enum_values),
+    category: Mapped[DeviationCategory] = mapped_column(
+        SqlEnum(DeviationCategory, native_enum=False, values_callable=_enum_values),
         nullable=False,
-        default=DeviationArea.yard,
+        default=DeviationCategory.yard,
     )
+    duration: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[DeviationStatus] = mapped_column(
         SqlEnum(DeviationStatus, native_enum=False, values_callable=_enum_values),
         nullable=False,

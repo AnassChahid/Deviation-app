@@ -55,8 +55,12 @@
                                             <strong>{{ deviation.shiftType }}</strong>
                                         </div>
                                         <div>
-                                            <span>Area</span>
-                                            <strong>{{ deviation.area|default('Yard') }}</strong>
+                                            <span>Category</span>
+                                            <strong>{{ deviation.category|default('Yard') }}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Duration</span>
+                                            <strong>{{ deviation.duration|default(0) }} min</strong>
                                         </div>
                                         <div>
                                             <span>Deviation type</span>

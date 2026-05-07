@@ -131,9 +131,22 @@ def ensure_deviation_columns() -> None:
         if description_exists is None:
             connection.execute(text("ALTER TABLE deviations ADD description VARCHAR(MAX) NULL"))
 
+        category_exists = connection.execute(text("SELECT COL_LENGTH('deviations', 'category')")).scalar()
         area_exists = connection.execute(text("SELECT COL_LENGTH('deviations', 'area')")).scalar()
-        if area_exists is None:
-            connection.execute(text("ALTER TABLE deviations ADD area VARCHAR(80) NOT NULL CONSTRAINT DF_deviations_area DEFAULT 'Yard'"))
+        if category_exists is None and area_exists is not None:
+            connection.execute(text("EXEC sp_rename 'deviations.area', 'category', 'COLUMN'"))
+        elif category_exists is None:
+            connection.execute(text("ALTER TABLE deviations ADD category VARCHAR(80) NOT NULL CONSTRAINT DF_deviations_category DEFAULT 'Yard'"))
+
+        connection.execute(text("""
+            UPDATE deviations
+            SET category = 'Others'
+            WHERE category NOT IN ('Equipments', 'Flow', 'Planning', 'Yard', 'Human', 'Others')
+        """))
+
+        duration_exists = connection.execute(text("SELECT COL_LENGTH('deviations', 'duration')")).scalar()
+        if duration_exists is None:
+            connection.execute(text("ALTER TABLE deviations ADD duration INT NOT NULL CONSTRAINT DF_deviations_duration DEFAULT 0"))
 
 
 # Notification table compatibility migrations

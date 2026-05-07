@@ -4,22 +4,17 @@ This checklist is for deploying the app to a shared testing environment. It is n
 
 ## Required Services
 
-- Python 3.10+ for backend and frontend.
-- Microsoft ODBC Driver 18 for SQL Server installed on the server.
+- Docker with Docker Compose support.
 - SQL Server database reachable from the backend server.
 - Backend URL reachable from the frontend server.
 
 ## Backend Setup
 
 ```powershell
-cd Backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item env.sample .env
+Copy-Item .\deploy\backend.env.sample .\deploy\backend.env
 ```
 
-Edit `Backend\.env`:
+Edit `deploy\backend.env`:
 
 - `DATABASE_URL`: SQL Server connection string for the testing database.
 - `SECRET_KEY`: strong testing secret, not the sample value.
@@ -28,11 +23,11 @@ Edit `Backend\.env`:
 - `AUTO_CREATE_DATABASE=True`: optional, only when running the manual initializer and the test SQL Server login may create databases.
 - `RUN_STARTUP_MIGRATIONS=False`: recommended; run schema initialization explicitly before starting the app.
 
-Start backend:
+Build and start backend:
 
 ```powershell
-cd Backend
-.\start-testing.ps1
+docker compose build backend
+docker compose up -d backend
 ```
 
 Backend checks:
@@ -44,26 +39,22 @@ Backend checks:
 ## Frontend Setup
 
 ```powershell
-cd Frontend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item env.sample .env
+Copy-Item .\deploy\frontend.env.sample .\deploy\frontend.env
 ```
 
-Edit `Frontend\.env`:
+Edit `deploy\frontend.env`:
 
 - `DEBUG=False`
 - `SECRET_KEY`: strong testing secret, not the sample value.
-- `BACKEND_API_URL=http://<backend-host>:8001`
+- `BACKEND_API_URL=http://backend:8001`
 - `HOST=0.0.0.0`
 - `PORT=5000`
 
 Start frontend:
 
 ```powershell
-cd Frontend
-.\start-testing.ps1
+docker compose build frontend
+docker compose up -d frontend
 ```
 
 Frontend check:
@@ -82,7 +73,7 @@ Run this before giving the test deployment to users:
 5. Confirm the new user cannot login until activated.
 6. Activate the user from Manage Users.
 7. Login as the activated user.
-8. Create a deviation with QC, vessel, area, shift, and deviation type.
+8. Create a deviation with QC, vessel, category, duration, shift, and deviation type.
 9. Edit the deviation and set status to `Done`.
 10. Open the deviation detail page and confirm the audit trail shows create/update/close.
 11. Confirm Deviations filters, pagination, and CSV export work.
@@ -91,7 +82,7 @@ Run this before giving the test deployment to users:
 
 ## Notes
 
-- Run `Backend\init-db.ps1` or `python -m app.db.initialize` from the `Backend` directory to apply the current compatibility initializer.
+- Run `docker compose run --rm backend python -m app.db.initialize` to apply the current compatibility initializer.
 - For production later, replace the compatibility initializer with versioned migrations such as Alembic.
 - Do not reuse the sample `SECRET_KEY` values outside local testing.
 - There is no default seeded superuser. The first admin must be created explicitly.

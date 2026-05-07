@@ -27,6 +27,8 @@
                                 </a>
                             </div>
 
+                            {% set form_category_options = category_options|default(area_options|default(['Equipments', 'Flow', 'Planning', 'Yard', 'Human', 'Others'])) %}
+
                             <div class="card">
                                 <div class="card-header">
                                     <h5>Deviation information</h5>
@@ -53,22 +55,28 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label for="area">Area</label>
-                                                    <select id="area" name="area" class="form-control" required>
-                                                        {% for area in area_options %}
-                                                            <option value="{{ area }}" {% if deviation.area == area %}selected{% endif %}>{{ area }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
                                                     <label for="status">Status</label>
                                                     <select id="status" name="status" class="form-control" required>
                                                         {% for status in status_options %}
                                                             <option value="{{ status }}" {% if deviation.status == status %}selected{% endif %}>{{ status }}</option>
                                                         {% endfor %}
                                                     </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="category">Category</label>
+                                                    <select id="category" name="category" class="form-control" required>
+                                                        {% for category_label in form_category_options %}
+                                                            <option value="{{ category_label }}" {% if deviation.category == category_label %}selected{% endif %}>{{ category_label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="duration">Duration (minutes)</label>
+                                                    <input id="duration" name="duration" type="number" class="form-control" min="0" step="1" value="{{ deviation.duration|default(0) }}" required>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">

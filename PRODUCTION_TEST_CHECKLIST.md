@@ -4,16 +4,16 @@ Use this checklist on a staging environment that matches production before movin
 
 ## 1. Configuration
 
-- [ ] `Backend\.env` uses a production SQL Server database, not localdb or a test database.
-- [ ] `Backend\.env` has `SECRET_KEY` set to a unique strong value with at least 32 characters.
-- [ ] `Backend\.env` has `ENABLE_API_DOCS=False`.
-- [ ] `Backend\.env` has `AUTO_CREATE_DATABASE=False`.
-- [ ] `Backend\.env` has `RUN_STARTUP_MIGRATIONS=False`.
-- [ ] `Frontend\.env` has `DEBUG=False`.
-- [ ] `Frontend\.env` has `FLASK_DEBUG=0`.
-- [ ] `Frontend\.env` has a unique strong `SECRET_KEY`.
-- [ ] `Frontend\.env` has `BACKEND_API_URL` pointing to the deployed backend URL.
-- [ ] `.env` files are not committed to git.
+- [ ] `deploy\backend.env` uses a production SQL Server database, not localdb or a test database.
+- [ ] `deploy\backend.env` has `SECRET_KEY` set to a unique strong value with at least 32 characters.
+- [ ] `deploy\backend.env` has `ENABLE_API_DOCS=False`.
+- [ ] `deploy\backend.env` has `AUTO_CREATE_DATABASE=False`.
+- [ ] `deploy\backend.env` has `RUN_STARTUP_MIGRATIONS=False`.
+- [ ] `deploy\frontend.env` has `DEBUG=False`.
+- [ ] `deploy\frontend.env` has `FLASK_DEBUG=0`.
+- [ ] `deploy\frontend.env` has a unique strong `SECRET_KEY`.
+- [ ] `deploy\frontend.env` has `BACKEND_API_URL=http://backend:8001`.
+- [ ] Runtime env files are not committed to git.
 - [ ] Runtime logs are not committed to git.
 
 ## 2. Backend Health
@@ -60,7 +60,7 @@ As admin/superuser:
 
 As a normal user:
 
-- [ ] Create a deviation with date, shift, area, status, deviation type, QC, vessel, and description.
+- [ ] Create a deviation with date, shift, category, duration, status, deviation type, QC, vessel, and description.
 - [ ] Confirm the deviation appears in the user deviation list.
 - [ ] Edit the deviation.
 - [ ] Set status to `Done`.
@@ -119,10 +119,13 @@ Check:
 
 ## 10. Production Start
 
-- [ ] Backend runs without `--reload`.
-- [ ] Backend is started with `Backend\start-production.ps1` or an equivalent no-reload command.
-- [ ] Frontend is started with `Frontend\start-production.ps1` or an equivalent WSGI server command.
-- [ ] Frontend runs behind a production process manager or reverse proxy.
+- [ ] `docker compose build` completes successfully.
+- [ ] Database initialization is run explicitly with `docker compose run --rm backend python -m app.db.initialize` when needed.
+- [ ] Backend container runs without `--reload`.
+- [ ] Frontend container runs with Waitress.
+- [ ] `docker compose up -d` starts both services.
+- [ ] `docker compose ps` shows backend and frontend running.
+- [ ] Frontend runs behind HTTPS reverse proxy for real users.
 - [ ] HTTPS is enabled.
 - [ ] HTTP redirects to HTTPS.
 - [ ] Server restart brings both apps back online.

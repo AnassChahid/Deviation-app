@@ -144,10 +144,12 @@
 }
 
 .app-filters .form-control,
-.app-filters select {
+.app-filters select,
+.app-filters .app-reset-field {
     font-family: var(--font-sans);
     font-size: 12px;
     height: 32px;
+    min-height: 40px;
     padding: 0 8px;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
@@ -158,32 +160,32 @@
 }
 
 .app-filters .form-control:focus,
-.app-filters select:focus {
+.app-filters select:focus,
+.app-filters .app-reset-field:focus {
     outline: none;
     border-color: var(--orange);
     box-shadow: 0 0 0 3px var(--orange-dim);
 }
 
-.app-filters .btn-outline-primary {
+.app-filter-action {
+    display: block;
+}
+
+.app-filter-action span {
+    visibility: hidden;
+}
+
+.app-filters .app-reset-field {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
-    padding: 0 12px;
-    margin-top: 19px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text-2);
-    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
-    transition: all .15s;
 }
 
-.app-filters .btn-outline-primary:hover {
+.app-filters .app-reset-field:hover {
     background: var(--orange-light);
     border-color: var(--orange);
     color: var(--orange);
@@ -514,6 +516,12 @@
 }
 
 /* ─── Pivot Table ──────────────────────────────────────────────────── */
+.app-duration-chart {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+
 .app-pivot-table {
     width: 100%;
     border-collapse: collapse;
@@ -839,6 +847,33 @@
 
 {# ── Ranked bar (Pareto) macro ── #}
 {# ── Cross-analysis chart macro (grouped horizontal bar via Chart.js) ── #}
+{% macro duration_histogram(title, chart, chart_id) %}
+<section class="app-panel">
+    <div class="app-panel-head">
+        <h2 class="app-panel-title">{{ title }}</h2>
+        <span class="app-panel-badge">{{ chart.total }} h</span>
+    </div>
+
+    {% if chart.labels %}
+    <div class="app-duration-chart">
+        <canvas id="{{ chart_id }}"
+                role="img"
+                aria-label="{{ title }} duration histogram.">
+        </canvas>
+    </div>
+    <script type="application/json" data-duration-chart="{{ chart_id }}">
+    {
+        "labels": {{ chart.labels | tojson }},
+        "durations": {{ chart.durations | tojson }},
+        "cumulative": {{ chart.cumulative | tojson }}
+    }
+    </script>
+    {% else %}
+    <div class="app-empty">No duration data available</div>
+    {% endif %}
+</section>
+{% endmacro %}
+
 {% macro cross_chart(title, cross, chart_id) %}
 <section class="app-panel">
     <div class="app-panel-head">
@@ -980,12 +1015,15 @@
                             </label>
 
                             {{ filter_select('vessel_id',        'Vessel',  filter_options.vessels,        selected_filters.vessel_id,        'id', 'name') }}
-                            {{ filter_select('area',             'Area',    filter_options.areas,           selected_filters.area) }}
+                            {{ filter_select('category',         'Category', filter_options.categories,     selected_filters.category) }}
                             {{ filter_select('deviation_type_id','Type',    filter_options.deviation_types, selected_filters.deviation_type_id,'id', 'name') }}
                             {{ filter_select('status',           'Status',  filter_options.statuses,        selected_filters.status) }}
                             {{ filter_select('shift',            'Shift',   filter_options.shifts,          selected_filters.shift) }}
 
-                            <a class="btn-outline-primary" href="{{ url_for('home_blueprint.index') }}">Reset</a>
+                            <label class="app-filter-action">
+                                <span>Reset</span>
+                                <a class="app-reset-field" href="{{ url_for('home_blueprint.index') }}">Reset</a>
+                            </label>
                         </form>
 
                         {# ── KPIs ── #}
@@ -1016,27 +1054,18 @@
                         <p class="app-section-label">Distribution breakdown</p>
                         <div class="app-grid-3">
                             {{ pie_chart('Status split',         pie_data.status,         'pie-status') }}
-                            {{ pie_chart('Area split',           pie_data.area,           'pie-area') }}
+                            {{ pie_chart('Category split',       pie_data.category,       'pie-category') }}
                             {{ pie_chart('Deviation type split', pie_data.deviation_type, 'pie-type') }}
                         </div>
 
                         {# ── Cross-Analysis ── #}
-                        <p class="app-section-label">Cross-analysis</p>
+                        <p class="app-section-label">Duration analysis</p>
                         <div class="app-grid-2">
-                            {{ cross_chart('Deviations by shift & area',     cross_data.shift_area,   'cross-shift-area') }}
-                            {{ cross_chart('Deviations by vessel & status',  cross_data.vessel_status,'cross-vessel-status') }}
+                            {{ duration_histogram('Deviation type per duration', duration_histograms.deviation_type, 'duration-type') }}
+                            {{ duration_histogram('Category per duration', duration_histograms.category, 'duration-category') }}
                         </div>
 
                         {# ── Pivot Tables ── #}
-                        <p class="app-section-label">Pivot tables</p>
-                        <div class="app-grid-2">
-                            {{ pivot_table('Area by deviation type', pivot_data.area_type) }}
-                            {{ pivot_table('Shift by area',          pivot_data.shift_area) }}
-                        </div>
-                        <!-- <div class="app-grid-2">
-                            {{ pivot_table('Shift by status',        pivot_data.shift_status) }}
-                        </div> -->
-
                         {# ── Records Table ── #}
                         <p class="app-section-label">Deviation records</p>
                         <section class="app-panel">
@@ -1053,7 +1082,8 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Vessel</th>
-                                            <th>Area</th>
+                                            <th>Category</th>
+                                            <th>Duration</th>
                                             <th>Type</th>
                                             <th>Status</th>
                                             <th>Shift</th>
@@ -1070,7 +1100,8 @@
                                                 </a>
                                             </td>
                                             <td>{{ deviation.vessel_names | join(', ') if deviation.vessel_names else 'No vessel' }}</td>
-                                            <td>{{ deviation.area | default('Unknown') }}</td>
+                                            <td>{{ deviation.category | default('Unknown') }}</td>
+                                            <td>{{ deviation.duration | default(0) }} min</td>
                                             <td>{{ deviation.deviation_type_name }}</td>
                                             <td>
                                                 {% set s = deviation.status | default('Unknown') | lower %}
@@ -1090,7 +1121,7 @@
                                         </tr>
                                         {% else %}
                                         <tr>
-                                            <td colspan="8" style="text-align:center;color:var(--text-3);padding:24px;">
+                                            <td colspan="9" style="text-align:center;color:var(--text-3);padding:24px;">
                                                 No deviations match the current filters.
                                             </td>
                                         </tr>
@@ -1278,6 +1309,113 @@ function hideTooltip() {
 /* ────────────────────────────────────────────────────────────────────────
    CROSS-ANALYSIS CHARTS  (grouped horizontal bar — Chart.js)
    ─────────────────────────────────────────────────────────────────────── */
+(function initDurationHistograms() {
+    document.querySelectorAll('[data-duration-chart]').forEach(function(scriptEl) {
+        const chartId = scriptEl.getAttribute('data-duration-chart');
+        const canvas = document.getElementById(chartId);
+        if (!canvas) return;
+
+        let cfg;
+        try { cfg = JSON.parse(scriptEl.textContent); }
+        catch(e) { console.warn('duration chart parse error', e); return; }
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: cfg.labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Duration',
+                        data: cfg.durations,
+                        yAxisID: 'duration',
+                        backgroundColor: '#17637f',
+                        borderRadius: 3,
+                        maxBarThickness: 42
+                    },
+                    {
+                        type: 'line',
+                        label: '%',
+                        data: cfg.cumulative,
+                        yAxisID: 'percent',
+                        borderColor: '#f37021',
+                        backgroundColor: '#f37021',
+                        borderWidth: 3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.25
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 22,
+                            boxHeight: 3,
+                            color: '#4b5563',
+                            font: { size: 11, family: "'DM Sans', sans-serif" }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f1117',
+                        titleColor: '#fff',
+                        bodyColor: '#ccc',
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                if (context.dataset.yAxisID === 'percent') {
+                                    return context.dataset.label + ': ' + context.parsed.y + '%';
+                                }
+                                return context.dataset.label + ': ' + context.parsed.y + ' h';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    duration: {
+                        position: 'left',
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.08)' },
+                        ticks: { color: '#4b5563', font: { size: 11, family: "'DM Sans', sans-serif" } },
+                        title: { display: true, text: 'Hours', color: '#4b5563' }
+                    },
+                    percent: {
+                        position: 'right',
+                        beginAtZero: true,
+                        min: 0,
+                        max: 100,
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: '#4b5563',
+                            callback: function(value) { return value + '%'; },
+                            font: { size: 11, family: "'DM Sans', sans-serif" }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#4b5563',
+                            maxRotation: 0,
+                            autoSkip: true,
+                            font: { size: 11, family: "'DM Sans', sans-serif" },
+                            callback: function(value) {
+                                const label = this.getLabelForValue(value);
+                                return label.length > 14 ? label.slice(0, 13) + '...' : label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+})();
+
 (function initCrossCharts() {
     document.querySelectorAll('[data-cross-chart]').forEach(function(scriptEl) {
         const chartId = scriptEl.getAttribute('data-cross-chart');
