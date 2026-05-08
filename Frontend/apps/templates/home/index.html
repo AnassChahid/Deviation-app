@@ -976,12 +976,12 @@
                                 <h1 class="app-db-title">Deviation analysis</h1>
                             </div>
                             <div class="app-db-actions">
-                                <button class="app-btn" type="button" data-dashboard-export>
+                                <!-- <button class="app-btn" type="button" data-dashboard-export>
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
                                         <path d="M8 2v8M4 7l4 4 4-4M2 13h12"/>
                                     </svg>
                                     Export CSV
-                                </button>
+                                </button> -->
                                 <button class="app-btn" type="button" onclick="doPrint()">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
                                         <rect x="2" y="5" width="12" height="8" rx="1"/>
@@ -1061,8 +1061,8 @@
                         {# ── Cross-Analysis ── #}
                         <p class="app-section-label">Duration analysis</p>
                         <div class="app-grid-2">
-                            {{ duration_histogram('Deviation type per duration', duration_histograms.deviation_type, 'duration-type') }}
                             {{ duration_histogram('Category per duration', duration_histograms.category, 'duration-category') }}
+                             {{ duration_histogram('Deviation type per duration', duration_histograms.deviation_type, 'duration-type') }}
                         </div>
 
                         {# ── Pivot Tables ── #}

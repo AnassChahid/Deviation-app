@@ -1,0 +1,143 @@
+@startuml
+title Backend app.models - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide circle
+
+enum UserRole {
+  superuser
+  admin
+  user
+}
+
+enum UserShift {
+  shift_a
+  shift_b
+  shift_c
+  shift_d
+}
+
+enum DeviationShift {
+  shift_a
+  shift_b
+  shift_c
+  shift_d
+}
+
+enum DeviationCategory {
+  equipments
+  flow
+  planning
+  yard
+  human
+  others
+}
+
+enum DeviationStatus {
+  done
+  on_going
+  not_yet
+}
+
+enum DeviationAuditAction {
+  created
+  updated
+  closed
+  deleted
+}
+
+class User {
+  +id: int
+  +role: UserRole
+  +firstName: str
+  +lastName: str
+  +email: str
+  +password: str
+  +shift: UserShift | None
+  +active: bool
+  +deviations: list[Deviation]
+}
+
+class Deviation {
+  +id: int
+  +date: Date
+  +ts: str
+  +shiftType: DeviationShift
+  +category: DeviationCategory
+  +duration: int
+  +status: DeviationStatus
+  +description: str | None
+  +creator_id: int
+  +deviation_type_id: int
+  +qc_id: int
+  +creator: User
+  +deviation_type: DeviationType
+  +qc: QC
+  +vessels: list[Vessel]
+  +vessel_ids: list[int]
+  +creator_name: str
+}
+
+class DeviationType {
+  +id: int
+  +name: str
+  +active: bool
+  +deviations: list[Deviation]
+}
+
+class QC {
+  +id: int
+  +qcName: str
+  +deviations: list[Deviation]
+}
+
+class Vessel {
+  +id: int
+  +name: str
+  +codeVessel: str
+  +deviations: list[Deviation]
+}
+
+class DeviationAudit {
+  +id: int
+  +deviation_id: int
+  +action: DeviationAuditAction
+  +actor_id: int
+  +actor_name: str
+  +created_at: datetime
+  +details: str | None
+  +actor: User
+}
+
+class Notification {
+  +id: int
+  +recipient_id: int
+  +actor_id: int
+  +deviation_id: int | None
+  +title: str
+  +message: str
+  +read: bool
+  +created_at: datetime
+  +recipient: User
+  +actor: User
+}
+
+User --> UserRole : role
+User --> UserShift : shift
+Deviation --> DeviationShift : shiftType
+Deviation --> DeviationCategory : category
+Deviation --> DeviationStatus : status
+DeviationAudit --> DeviationAuditAction : action
+
+User "1" -- "0..*" Deviation : creates
+DeviationType "1" -- "0..*" Deviation : type
+QC "1" -- "0..*" Deviation : qc
+Deviation "0..*" -- "0..*" Vessel : vessels
+User "1" -- "0..*" DeviationAudit : actor
+DeviationAudit ..> Deviation : deviation_id
+User "1" -- "0..*" Notification : recipient
+User "1" -- "0..*" Notification : actor
+Notification "0..*" ..> "0..1" Deviation : deviation_id
+
+@enduml
