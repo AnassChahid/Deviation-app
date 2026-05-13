@@ -10,24 +10,18 @@
             <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <div class="page-header">
-                            <div class="page-block">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <div class="page-header-title">
-                                            <h5 class="m-b-10">Notifications</h5>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 text-right">
-                                        <form method="post" action="{{ url_for('home_blueprint.notifications_read_all') }}">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                Mark all read
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                        <div class="app-page-heading app-notifications-heading">
+                            <div>
+                                <span class="app-kicker">Inbox</span>
+                                <h1>Notifications</h1>
                             </div>
+                            <form method="post" action="{{ url_for('home_blueprint.notifications_read_all') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-outline-primary" {% if not notification_stats.unread %}disabled{% endif %}>
+                                    <i class="feather icon-check-circle"></i>
+                                    Mark all read
+                                </button>
+                            </form>
                         </div>
 
                         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -38,26 +32,58 @@
                             {% endif %}
                         {% endwith %}
 
-                        <div class="card">
+                        <div class="card app-notification-card">
                             <div class="card-body">
+                                <div class="app-notification-summary">
+                                    <div class="app-notification-summary-item">
+                                        <span>Total</span>
+                                        <strong>{{ notification_stats.total }}</strong>
+                                    </div>
+                                    <div class="app-notification-summary-item is-unread">
+                                        <span>Unread</span>
+                                        <strong>{{ notification_stats.unread }}</strong>
+                                    </div>
+                                    <div class="app-notification-summary-item">
+                                        <span>Read</span>
+                                        <strong>{{ notification_stats.read }}</strong>
+                                    </div>
+                                </div>
+
                                 {% if notifications %}
-                                <div class="app-notification-list">
+                                <div class="app-notification-list app-notification-list-page">
                                     {% for notification in notifications %}
+                                    {% set title_lower = notification.title|lower %}
                                     <div class="app-notification-row {% if not notification.read %}is-unread{% endif %}">
-                                        <div>
-                                            <strong>{{ notification.title }}</strong>
-                                            <p>{{ notification.message }}</p>
-                                            <small>{{ notification.created_at }}</small>
+                                        <div class="app-notification-row-icon">
+                                            <i class="feather {% if 'account' in title_lower %}icon-user-plus{% elif notification.deviation_id %}icon-file-text{% else %}icon-bell{% endif %}"></i>
                                         </div>
-                                        <form method="post" action="{{ url_for('home_blueprint.notification_read', notification_id=notification.id) }}">
+                                        <div class="app-notification-row-body">
+                                            <div class="app-notification-title-line">
+                                                <strong>{{ notification.title }}</strong>
+                                                <span class="badge {% if notification.read %}badge-light{% else %}badge-danger{% endif %}">
+                                                    {% if notification.read %}Read{% else %}Unread{% endif %}
+                                                </span>
+                                            </div>
+                                            <p>{{ notification.message }}</p>
+                                            <small>
+                                                <i class="feather icon-clock"></i>
+                                                {{ notification.created_at|replace('T', ' ')|replace('+00:00', '') }}
+                                            </small>
+                                        </div>
+                                        <form class="app-notification-row-action" method="post" action="{{ url_for('home_blueprint.notification_read', notification_id=notification.id) }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="return_to" value="{{ current_notifications_url }}">
                                             {% if notification.deviation_id %}
                                             <input type="hidden" name="deviation_id" value="{{ notification.deviation_id }}">
                                             {% endif %}
-                                            <button type="submit" class="btn btn-sm btn-primary">
+                                            <button type="submit" class="btn btn-sm {% if notification.deviation_id %}btn-primary{% elif notification.read %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}" {% if notification.read and not notification.deviation_id %}disabled{% endif %}>
                                                 {% if notification.deviation_id %}
+                                                <i class="feather icon-external-link"></i>
                                                 Open deviation
+                                                {% elif notification.read %}
+                                                Read
                                                 {% else %}
+                                                <i class="feather icon-check"></i>
                                                 Mark read
                                                 {% endif %}
                                             </button>
@@ -67,6 +93,43 @@
                                 </div>
                                 {% else %}
                                 <div class="app-empty-state">No notifications yet.</div>
+                                {% endif %}
+
+                                {% if notification_pagination.total %}
+                                <div class="app-notification-pagination">
+                                    <div class="app-notification-page-summary">
+                                        Showing {{ notification_pagination.start_item }}-{{ notification_pagination.end_item }} of {{ notification_pagination.total }}
+                                    </div>
+                                    {% if notification_pagination.pages > 1 %}
+                                    <nav aria-label="Notifications pagination">
+                                        <ul class="pagination mb-0">
+                                            <li class="page-item {% if not notification_pagination.prev_url %}disabled{% endif %}">
+                                                {% if notification_pagination.prev_url %}
+                                                <a class="page-link" href="{{ notification_pagination.prev_url }}">Prev</a>
+                                                {% else %}
+                                                <span class="page-link">Prev</span>
+                                                {% endif %}
+                                            </li>
+                                            {% for link in notification_pagination.page_links %}
+                                            <li class="page-item {% if link.is_current %}active{% endif %}">
+                                                {% if link.is_current %}
+                                                <span class="page-link">{{ link.number }}</span>
+                                                {% else %}
+                                                <a class="page-link" href="{{ link.url }}">{{ link.number }}</a>
+                                                {% endif %}
+                                            </li>
+                                            {% endfor %}
+                                            <li class="page-item {% if not notification_pagination.next_url %}disabled{% endif %}">
+                                                {% if notification_pagination.next_url %}
+                                                <a class="page-link" href="{{ notification_pagination.next_url }}">Next</a>
+                                                {% else %}
+                                                <span class="page-link">Next</span>
+                                                {% endif %}
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                    {% endif %}
+                                </div>
                                 {% endif %}
                             </div>
                         </div>

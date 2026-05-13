@@ -57,11 +57,12 @@
                             </div>
 
                             <div class="input-group mb-3">
-                                {{ form.password(placeholder="Password", class="form-control", type="password") }}
+                                {{ form.password(placeholder="Password", class="form-control", type="password", minlength="8", maxlength="128", pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,128}", title="Password must be 8-128 characters and include uppercase, lowercase, number, and symbol", autocomplete="new-password") }}
                             </div>
+                            <small class="form-text text-muted text-left mb-3">Use 8-128 characters with uppercase, lowercase, number, and symbol.</small>
 
                             <div class="input-group mb-4">
-                                {{ form.confirm_password(placeholder="Confirm password", class="form-control", type="password") }}
+                                {{ form.confirm_password(placeholder="Confirm password", class="form-control", type="password", minlength="8", maxlength="128", autocomplete="new-password") }}
                             </div>
                             
                             <button type="submit" name="register" class="btn btn-primary shadow-2 mb-4"><i class="feather icon-user-plus"></i>Register</button>

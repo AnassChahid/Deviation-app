@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,6 +9,10 @@ from app.models.user import User, UserRole
 from app.schemas.auth import BootstrapAdminCreate, PendingUserRegister
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.base import commit_or_400
+from app.services import notifications as notification_service
+
+
+logger = logging.getLogger(__name__)
 
 
 # First-account bootstrap
@@ -66,7 +72,16 @@ def register_pending_user(db: Session, payload: PendingUserRegister) -> User:
         shift=payload.shift,
         active=False,
     )
-    return commit_or_400(db, user)
+    user = commit_or_400(db, user)
+
+    try:
+        notification_service.create_user_registration_notifications(db, user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to create registration notifications for user %s", user.id)
+
+    return user
 
 
 # Role assignment policy

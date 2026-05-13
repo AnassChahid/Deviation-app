@@ -47,6 +47,19 @@ def create_deviation_delete_notifications(db: Session, deviation: Deviation, act
     _add_admin_deviation_notifications(db, deviation, actor, "Deviation deleted", "deleted")
 
 
+def create_user_registration_notifications(db: Session, user: User) -> None:
+    actor_name = _actor_name(user)
+
+    for recipient in _admin_recipients(db):
+        db.add(Notification(
+            recipient_id=recipient.id,
+            actor_id=user.id,
+            deviation_id=None,
+            title="New account request",
+            message=f"{actor_name} requested access with {user.email}.",
+        ))
+
+
 def list_notifications(db: Session, current_user: User) -> list[Notification]:
     return (
         db.query(Notification)

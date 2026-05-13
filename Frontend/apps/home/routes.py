@@ -5,8 +5,8 @@ from datetime import date, datetime, timedelta
 
 from apps import api_client
 from apps.home import blueprint
-from flask import flash, redirect, render_template, request, session, url_for
-from flask_login import login_required
+from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required
 
 SHIFT_TYPES = ('Shift A', 'Shift B', 'Shift C', 'Shift D')
 CATEGORY_TYPES = ('Equipments', 'Flow', 'Planning', 'Yard', 'Human', 'Others')
@@ -296,6 +296,35 @@ def _dashboard_pagination(total_items, page, per_page):
         args = request.args.to_dict()
         args['page'] = page_number
         return url_for('home_blueprint.index', **args)
+
+    return {
+        'page': current_page,
+        'per_page': per_page,
+        'total': total_items,
+        'pages': page_count,
+        'start': start,
+        'end': end,
+        'start_item': start + 1 if total_items else 0,
+        'end_item': min(end, total_items),
+        'prev_url': page_url(current_page - 1) if current_page > 1 else None,
+        'next_url': page_url(current_page + 1) if current_page < page_count else None,
+        'page_links': [
+            {'number': number, 'url': page_url(number), 'is_current': number == current_page}
+            for number in range(window_start, window_end + 1)
+        ],
+    }
+
+
+def _notifications_pagination(total_items, page, per_page=8):
+    page_count = max((total_items + per_page - 1) // per_page, 1)
+    current_page = min(max(page or 1, 1), page_count)
+    start = (current_page - 1) * per_page
+    end = start + per_page
+    window_start = max(1, current_page - 2)
+    window_end = min(page_count, current_page + 2)
+
+    def page_url(page_number):
+        return url_for('home_blueprint.notifications', page=page_number)
 
     return {
         'page': current_page,
@@ -962,7 +991,48 @@ def notifications():
         rows = []
         flash(str(error), 'danger')
 
-    return render_template('home/notifications.html', segment='notifications', notifications=rows)
+    pagination = _notifications_pagination(
+        len(rows),
+        request.args.get('page', 1, type=int),
+        8,
+    )
+    paged_rows = rows[pagination['start']:pagination['end']]
+    unread_count = sum(1 for row in rows if not row.get('read'))
+
+    return render_template(
+        'home/notifications.html',
+        segment='notifications',
+        notifications=paged_rows,
+        notification_pagination=pagination,
+        notification_stats={
+            'total': len(rows),
+            'unread': unread_count,
+            'read': len(rows) - unread_count,
+        },
+        current_notifications_url=url_for('home_blueprint.notifications', page=pagination['page']),
+    )
+
+
+@blueprint.route('/notifications/live')
+@login_required
+def notifications_live():
+    if current_user.role not in ('admin', 'superuser'):
+        return jsonify({'notifications': [], 'unread': 0})
+
+    access_token = session.get('access_token')
+    if not access_token:
+        return jsonify({'notifications': [], 'unread': 0}), 401
+
+    try:
+        rows = api_client.list_notifications(access_token)
+        unread = api_client.unread_notification_count(access_token)
+    except api_client.BackendAPIError as error:
+        return jsonify({'error': str(error), 'notifications': [], 'unread': 0}), 502
+
+    return jsonify({
+        'notifications': rows[:5],
+        'unread': unread,
+    })
 
 
 @blueprint.route('/notifications/<int:notification_id>/read', methods=['POST'])
@@ -973,6 +1043,7 @@ def notification_read(notification_id):
         return redirect(url_for('authentication_blueprint.login'))
 
     deviation_id = request.form.get('deviation_id', type=int)
+    return_to = (request.form.get('return_to') or '').strip()
     try:
         api_client.mark_notification_read(access_token, notification_id)
     except api_client.BackendAPIError as error:
@@ -981,6 +1052,8 @@ def notification_read(notification_id):
 
     if deviation_id:
         return redirect(url_for('home_blueprint.deviation_detail', deviation_id=deviation_id))
+    if return_to.startswith('/') and not return_to.startswith('//'):
+        return redirect(return_to)
     return redirect(url_for('home_blueprint.notifications'))
 
 

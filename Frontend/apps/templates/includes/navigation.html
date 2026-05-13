@@ -16,7 +16,11 @@
         <ul class="navbar-nav ml-auto">
             {% if current_user.role in ['admin', 'superuser'] %}
             <li>
-                <div class="dropdown app-notification-menu">
+                <div class="dropdown app-notification-menu"
+                     data-live-url="{{ url_for('home_blueprint.notifications_live') }}"
+                     data-read-url-template="{{ url_for('home_blueprint.notification_read', notification_id=0) }}"
+                     data-notifications-url="{{ url_for('home_blueprint.notifications') }}"
+                     data-csrf-token="{{ csrf_token() }}">
                     <a href="javascript:" class="dropdown-toggle app-notification-toggle" data-toggle="dropdown" title="Notifications">
                         <i class="feather icon-bell"></i>
                         {% if app_unread_notifications %}
@@ -28,6 +32,7 @@
                             <strong>Notifications</strong>
                             <a href="{{ url_for('home_blueprint.notifications') }}">View all</a>
                         </div>
+                        <div class="app-notification-items">
                         {% if app_notifications %}
                             {% for notification in app_notifications %}
                             <form method="post" action="{{ url_for('home_blueprint.notification_read', notification_id=notification.id) }}">
@@ -44,6 +49,7 @@
                         {% else %}
                             <div class="app-notification-empty">No notifications</div>
                         {% endif %}
+                        </div>
                     </div>
                 </div>
             </li>

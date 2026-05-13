@@ -1,7 +1,11 @@
 # -*- encoding: utf-8 -*-
 from flask_wtf import FlaskForm
 from wtforms import SelectField, StringField, PasswordField
-from wtforms.validators import Email, DataRequired, EqualTo, Regexp
+from wtforms.validators import Email, DataRequired, EqualTo, Length, Regexp
+
+
+PASSWORD_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,128}$'
+PASSWORD_MESSAGE = 'Password must be 8-128 characters and include uppercase, lowercase, number, and symbol'
 
 
 # Login form
@@ -42,7 +46,11 @@ class CreateAccountForm(FlaskForm):
     )
     password = PasswordField('Password',
                              id='pwd_create',
-                             validators=[DataRequired()])
+                             validators=[
+                                 DataRequired(),
+                                 Length(min=8, max=128, message=PASSWORD_MESSAGE),
+                                 Regexp(PASSWORD_PATTERN, message=PASSWORD_MESSAGE),
+                             ])
     confirm_password = PasswordField(
         'Confirm password',
         id='pwd_confirm_create',

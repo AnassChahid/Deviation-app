@@ -80,3 +80,18 @@ def test_admin_update_does_not_notify_admins():
     notification_service.create_deviation_update_notifications(db, deviation, actor)
 
     assert db.added == []
+
+
+def test_user_registration_creates_admin_notifications():
+    db = FakeDb([_user(10, UserRole.admin), _user(11, UserRole.superuser)])
+    pending_user = _user(1, UserRole.user)
+
+    notification_service.create_user_registration_notifications(db, pending_user)
+
+    assert len(db.added) == 2
+    assert all(isinstance(item, Notification) for item in db.added)
+    assert {item.recipient_id for item in db.added} == {10, 11}
+    assert all(item.actor_id == pending_user.id for item in db.added)
+    assert all(item.deviation_id is None for item in db.added)
+    assert all(item.title == "New account request" for item in db.added)
+    assert all(pending_user.email in item.message for item in db.added)

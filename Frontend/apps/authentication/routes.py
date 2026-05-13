@@ -73,6 +73,18 @@ def login():
 def register():
     create_account_form = CreateAccountForm(request.form)
     if 'register' in request.form:
+        if not create_account_form.validate():
+            first_error = next(
+                (messages[0] for messages in create_account_form.errors.values() if messages),
+                'Please check the account form and try again.',
+            )
+            return render_template(
+                'accounts/register.html',
+                msg=first_error,
+                success=False,
+                form=create_account_form,
+            )
+
         if not api_client.backend_enabled():
             return render_template(
                 'accounts/register.html',
